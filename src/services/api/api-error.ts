@@ -6,17 +6,34 @@ export type ApiErrorKind =
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   readonly status: number | null;
+  /** Per-field messages from a validation response, e.g. `{ email: 'Enter a valid email' }`. */
+  readonly fieldErrors: Readonly<Record<string, string>>;
 
-  constructor(message: string, kind: ApiErrorKind, status: number | null = null) {
+  constructor(
+    message: string,
+    kind: ApiErrorKind,
+    status: number | null = null,
+    fieldErrors: Record<string, string> = {},
+  ) {
     super(message);
     this.name = 'ApiError';
     this.kind = kind;
     this.status = status;
+    this.fieldErrors = fieldErrors;
   }
 
   get isRetryable(): boolean {
     return this.kind === 'network' || this.kind === 'timeout' || this.kind === 'server';
   }
+}
+
+function fieldErrorsFromBody(data: unknown): Record<string, string> {
+  if (!data || typeof data !== 'object' || !('fieldErrors' in data)) return {};
+  const raw = (data as { fieldErrors: unknown }).fieldErrors;
+  if (!raw || typeof raw !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).filter(([, v]) => typeof v === 'string'),
+  ) as Record<string, string>;
 }
 
 function messageFromBody(data: unknown): string | null {
@@ -47,10 +64,18 @@ export function toApiError(error: unknown): ApiError {
         status,
       );
     }
-    if (status === 400 || status === 422) {
+    if (status === 400 || status === 409 || status === 422) {
       return new ApiError(
         serverMessage ?? 'Some of the information is invalid.',
         'validation',
+        status,
+        fieldErrorsFromBody(data),
+      );
+    }
+    if (status === 429) {
+      return new ApiError(
+        serverMessage ?? 'Too many attempts. Please wait and try again.',
+        'unknown',
         status,
       );
     }

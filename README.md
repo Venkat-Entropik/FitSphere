@@ -2,7 +2,7 @@
 
 AI-powered fitness and wellness app — Expo SDK 58, React Native, TypeScript (strict), Expo Router.
 
-> **Status:** every Stitch-designed screen (including **Profile & Settings**) is built and runs on
+> **Status:** real **sign-in/sign-up** now run against `backend/`. Every Stitch-designed screen (including **Profile & Settings**) is built and runs on
 > real logic over a persisted mock backend. Login and Register still have no design (Login offers a
 > demo-mode button when mocks are on). On Profile, paired sensors and the membership card are
 > clearly-labelled **sample** UI — there is no device-pairing or billing backend.
@@ -48,6 +48,34 @@ __tests__/      Jest tests
 - **API**: one axios client; request interceptor adds the bearer token, response interceptor
   normalizes every failure to `ApiError` and signs the user out on 401.
 - **Styling**: `StyleSheet` + tokens from `src/theme`. Components never hardcode colors.
+
+## Backend & authentication
+
+`backend/` is a TypeScript API (Fastify + Zod + Node's built-in SQLite) with its own `package.json`.
+So far it implements **sign-up, sign-in, token refresh, sign-out and `/auth/me`**; everything else the
+app shows is still served by the on-device sample backend (`EXPO_PUBLIC_USE_MOCKS=true`).
+
+```bash
+cp backend/.env.example backend/.env   # then set JWT_SECRET (see the file for a one-liner)
+npm run backend:dev                    # http://localhost:3000
+npm run backend:test                   # 23 tests
+npm start                              # the app; set EXPO_PUBLIC_API_URL in .env
+```
+
+On a physical phone `localhost` is the phone itself: run the API with `HOST=0.0.0.0` and point
+`EXPO_PUBLIC_API_URL` at your computer's LAN IP.
+
+- **Passwords:** scrypt with a per-user salt; login errors are identical for "no such user" and "wrong
+  password" and take the same time. 5 failed attempts per IP+email lock sign-in for 15 minutes.
+- **Tokens:** 15-minute JWT access tokens + opaque refresh tokens (stored hashed, rotated on every use).
+  Re-using a rotated refresh token is treated as theft and ends all of that user's sessions.
+- **App side:** tokens live in SecureStore (localStorage on web, for development only). A 401 triggers one
+  shared refresh and a retry; if refresh is rejected the user is signed out and the route gate returns
+  them to Sign in. Signed-out users can only reach `(auth)`; signed-in users only the app and onboarding.
+- **Not yet:** email verification, password reset, per-user data on the server (the mock backend is reset
+  when a different account signs in so users never see each other's sample data), social login.
+- Node's `node:sqlite` is experimental and prints a warning; the SQL is plain ANSI, so moving to
+  Postgres is mechanical.
 
 ## Business logic (Phase 3)
 

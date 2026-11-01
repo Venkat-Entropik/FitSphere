@@ -215,7 +215,12 @@ describe('ProfileScreen', () => {
   });
 
   it('signs out after confirmation: clears credentials, reminders and caches, then leaves the app', async () => {
-    await useAuthStore.getState().signIn({ accessToken: 'a', refreshToken: null });
+    await useAuthStore
+      .getState()
+      .signIn(
+        { accessToken: 'a', refreshToken: null },
+        { id: 'u1', name: 'Alex', email: 'a@b.co' },
+      );
     usePreferencesStore.setState({ notificationsEnabled: true });
     const { client } = await renderScreen();
     client.setQueryData(['x'], 1);

@@ -1,0 +1,28 @@
+import { z } from 'zod';
+
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().positive().default(3000),
+  /** Bind to 127.0.0.1 by default; use 0.0.0.0 to reach the API from a phone on your network. */
+  HOST: z.string().default('127.0.0.1'),
+  DATABASE_PATH: z.string().default('./data/fitsphere.db'),
+  /** Signs access tokens. Required, at least 32 characters, never committed. */
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().positive().default(15 * 60),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  /** Comma-separated browser origins allowed to call the API (the Expo web dev server). */
+  CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:8090'),
+  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOGIN_WINDOW_SEC: z.coerce.number().int().positive().default(15 * 60),
+});
+
+export type Config = z.infer<typeof schema>;
+
+export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
+  const parsed = schema.safeParse(env);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    throw new Error(`Invalid backend configuration — ${details}. See backend/.env.example.`);
+  }
+  return parsed.data;
+}
