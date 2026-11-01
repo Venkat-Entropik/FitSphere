@@ -1,0 +1,30 @@
+# Render Blueprint: deploys the backend (backend/Dockerfile) with a persistent disk for the SQLite file.
+# Dashboard: New → Blueprint → pick this repo. See backend/DEPLOY.md.
+services:
+  - type: web
+    name: fitsphere-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    # Persistent disks need a paid instance. 0.5c-512mb is Render's entry paid plan (formerly "starter").
+    plan: 0.5c-512mb
+    healthCheckPath: /health
+    # SQLite is a single file: never run more than one instance.
+    numInstances: 1
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TRUST_PROXY
+        value: 'true'
+      # Optional: leave blank to skip. Password-reset email needs RESEND_API_KEY and MAIL_FROM.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false

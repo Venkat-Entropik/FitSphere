@@ -1,9 +1,27 @@
-# Deploying the FitSphere backend (Railway)
+# Deploying the FitSphere backend
 
 The backend is one container: Fastify + SQLite. SQLite is a file, so the container needs a **volume**
 that survives restarts, and you must run **one instance only**.
 
-## 1. Create the service
+## Option A: Render (blueprint)
+
+Render attaches a persistent disk to a paid web service (the entry plan is about $7 a month, plus about
+$0.25 per GB of disk; check their pricing page). `render.yaml` at the repo root sets everything up.
+
+1. Push the repo to GitHub and sign up at render.com (GitHub login is simplest).
+2. **New → Blueprint** → pick the `FitSphere` repo → Render reads `render.yaml`.
+3. When prompted, leave `GEMINI_API_KEY`, `RESEND_API_KEY` and `MAIL_FROM` blank if you don't have them yet
+   (add them later under the service's **Environment** tab). `JWT_SECRET` is generated for you.
+4. Click **Apply**. The first build takes a few minutes. Your URL is `https://fitsphere-backend-xxxx.onrender.com`.
+5. Check it, as in "Check it works" below. The disk is mounted at `/data`, so data survives redeploys.
+
+A disk means a few seconds of downtime on each deploy, and you can't scale past one instance.
+
+## Option B: Railway
+
+(Railway paused new signups after an incident; if you can't register, use Option A.)
+
+### 1. Create the service
 
 1. Push this repo to GitHub.
 2. In Railway: **New Project → Deploy from GitHub repo** → pick the repo.
@@ -11,13 +29,13 @@ that survives restarts, and you must run **one instance only**.
    Railway finds `backend/Dockerfile` and builds it.
 4. **Settings → Networking → Generate Domain**. You get `https://<name>.up.railway.app`.
 
-## 2. Add the volume
+### 2. Add the volume
 
 Service → **Volumes → New Volume** → mount path `/data`.
 The database lives at `/data/fitsphere.db` (the Dockerfile sets this). Without the volume, every deploy
 wipes all accounts and data.
 
-## 3. Set variables
+### 3. Set variables
 
 Service → **Variables**:
 
@@ -34,7 +52,7 @@ Service → **Variables**:
 Do not set `PORT`, `HOST` or `DATABASE_PATH`; the platform and Dockerfile handle them.
 Railway keeps **replicas at 1** by default. Do not scale it up (rate limits are in memory and SQLite is a single file).
 
-## 4. Check it works
+## Check it works (either host)
 
 ```bash
 curl https://<your-domain>/health          # {"status":"ok"}
