@@ -3,27 +3,33 @@ import { useState } from 'react';
 import { Screen } from '@/components/common/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useNow } from '@/hooks/useNow';
+import { usePreferencesStore } from '@/store/preferences.store';
 import { toApiError } from '@/services/api/api-error';
 import { useActiveWorkoutStore } from '@/store/active-workout.store';
 
 import { ExerciseTrackerCard } from '../components/ExerciseTrackerCard';
+import { ExerciseVideoSheet } from '../components/ExerciseVideoSheet';
 import { NextExerciseBar } from '../components/NextExerciseBar';
 import { RestTimerCard } from '../components/RestTimerCard';
 import { SessionTelemetryCard } from '../components/SessionTelemetryCard';
+import { TodaySuggestionCard } from '../components/TodaySuggestionCard';
 import { WorkoutActionDock } from '../components/WorkoutActionDock';
 import { WorkoutCategoryChips } from '../components/WorkoutCategoryChips';
 import { useStartWorkout } from '../hooks/useStartWorkout';
 import {
+  useExerciseCatalog,
   useFinishWorkout,
   useNextPlan,
   useWorkoutCategories,
+  useWorkoutHistory,
   useWorkoutPlans,
 } from '../hooks/useWorkoutData';
+import type { Exercise } from '../types/workout-record.types';
+import { buildTodaySuggestion } from '../utils/today-suggestion';
 import {
   activeSet,
   completedSetCount,
@@ -41,6 +47,11 @@ export function WorkoutsScreen() {
   const categories = useWorkoutCategories();
   const plans = useWorkoutPlans();
   const suggestedPlan = useNextPlan();
+  const catalog = useExerciseCatalog();
+  const history = useWorkoutHistory();
+  const autoOverload = usePreferencesStore((s) => s.autoProgressiveOverload);
+  const [videoExercise, setVideoExercise] = useState<Exercise | null>(null);
+  const [today] = useState(() => Date.now());
   const startWorkout = useStartWorkout();
   const finishWorkout = useFinishWorkout();
   const { session, rest, adjustWeight, adjustReps, logSet, addRest, skipRest } =
@@ -83,17 +94,25 @@ export function WorkoutsScreen() {
           selectedId={selectedId}
           onSelect={setCategoryId}
         />
-        <EmptyState
-          icon="fitness_center"
-          title="No active workout"
-          message={
-            plan
-              ? `${plan.name}. Loads and rep targets are set from your last sessions.`
-              : 'Pick a day to start a session.'
-          }
-          actionLabel={plan ? `Start ${plan.name.split(' –')[0]}` : undefined}
-          onAction={plan ? () => void startWorkout(plan.id) : undefined}
-        />
+        {plan && plans.data && catalog.data && history.data ? (
+          <TodaySuggestionCard
+            suggestion={buildTodaySuggestion({
+              plan,
+              plans: plans.data,
+              catalog: catalog.data,
+              records: history.data,
+              now: today,
+              autoOverload,
+            })}
+            onStart={() => void startWorkout(plan.id)}
+            onShowVideo={setVideoExercise}
+          />
+        ) : (
+          <AppText variant="bodyMd" color="onSurfaceVariant">
+            Pick a day to start a session.
+          </AppText>
+        )}
+        <ExerciseVideoSheet exercise={videoExercise} onClose={() => setVideoExercise(null)} />
       </Screen>
     );
   }
@@ -125,7 +144,11 @@ export function WorkoutsScreen() {
         activeSetNumber={set?.number ?? null}
         onAdjustWeight={adjustWeight}
         onAdjustReps={adjustReps}
+        onShowVideo={() =>
+          setVideoExercise(catalog.data?.find((e) => e.id === exercise.id) ?? null)
+        }
       />
+      <ExerciseVideoSheet exercise={videoExercise} onClose={() => setVideoExercise(null)} />
       {rest && restSeconds > 0 ? (
         <RestTimerCard
           remainingSeconds={restSeconds}

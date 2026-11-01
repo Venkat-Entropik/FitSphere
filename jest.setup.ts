@@ -19,6 +19,9 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
+// The YouTube player wraps a native WebView, which has no native module under Jest.
+jest.mock('react-native-webview', () => ({ WebView: 'WebView' }));
+
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
   notificationAsync: jest.fn(),

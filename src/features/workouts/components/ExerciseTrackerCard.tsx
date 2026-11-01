@@ -40,6 +40,8 @@ export interface ExerciseTrackerCardProps {
   activeSetNumber: number | null;
   onAdjustWeight: (direction: 1 | -1) => void;
   onAdjustReps: (direction: 1 | -1) => void;
+  /** Opens the how-to video for this exercise. */
+  onShowVideo?: () => void;
 }
 
 export function ExerciseTrackerCard({
@@ -49,6 +51,7 @@ export function ExerciseTrackerCard({
   activeSetNumber,
   onAdjustWeight,
   onAdjustReps,
+  onShowVideo,
 }: ExerciseTrackerCardProps) {
   const theme = useTheme();
   const canAdjust = activeSetNumber !== null;
@@ -87,19 +90,22 @@ export function ExerciseTrackerCard({
             {exercise.muscles}
           </AppText>
         </View>
-        {/* Exercise photo from the Stitch export is a remote asset; show a neutral tile instead. */}
-        <View
-          style={{
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`How to do ${exercise.name}`}
+          disabled={!onShowVideo}
+          onPress={onShowVideo}
+          style={({ pressed }) => ({
             width: 56,
             height: 56,
             borderRadius: theme.radius.sm,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: pressed ? theme.colors.surfaceBright : theme.colors.surface,
             alignItems: 'center',
             justifyContent: 'center',
-          }}
+          })}
         >
-          <Icon name="fitness_center" size={24} color="outline" />
-        </View>
+          <Icon name={onShowVideo ? 'play_circle' : 'fitness_center'} size={28} color="primary" />
+        </Pressable>
       </View>
 
       <View

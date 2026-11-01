@@ -1,4 +1,5 @@
 import type { Exercise, WorkoutPlan } from '../types/workout-record.types';
+import { EXERCISE_MEDIA } from './exercise-media';
 
 const ex = (
   id: string,
@@ -22,7 +23,7 @@ const ex = (
   startKg,
 });
 
-/** Exercise library (reference data). */
+/** Exercise library (reference data). Videos and form cues are merged in from `exercise-media.ts`. */
 export const EXERCISE_CATALOG: Exercise[] = [
   ex(
     'incline-db-press',
@@ -202,7 +203,7 @@ export const EXERCISE_CATALOG: Exercise[] = [
     40,
   ),
   ex('plank', 'Weighted Plank', 'core', 'Core', 'bodyweight', 'Core', [8, 12], 2.5, 5),
-];
+].map((exercise) => ({ ...exercise, ...EXERCISE_MEDIA[exercise.id] }));
 
 /** Training plans, one per category chip on the Workouts screen. */
 export const WORKOUT_PLANS: WorkoutPlan[] = [

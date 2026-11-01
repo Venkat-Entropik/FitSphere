@@ -16,6 +16,17 @@ export interface Exercise {
   incrementKg: number;
   /** Starting weight when there is no history (kg). */
   startKg: number;
+  /** "How to" demonstration. Absent for exercises without a curated video. */
+  video?: ExerciseVideo;
+  /** Short form cues shown beside the video. */
+  cues?: readonly string[];
+}
+
+export interface ExerciseVideo {
+  /** YouTube video id (the `v=` value). */
+  youtubeId: string;
+  /** Video title, shown as the player's accessibility label. */
+  title: string;
 }
 
 export interface PlanExerciseSlot {
