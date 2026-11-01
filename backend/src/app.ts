@@ -33,7 +33,12 @@ export interface AppOptions {
 
 export async function buildApp({ config, db, now, ai }: AppOptions): Promise<FastifyInstance> {
   // Bodies are small by design (routes are downsampled to ≤200 points), so cap them well below Fastify's 1 MB.
-  const app = Fastify({ logger: config.NODE_ENV === 'development', bodyLimit: 256 * 1024 });
+  const app = Fastify({
+    // Request logs carry method, path and status only: never bodies, headers or tokens. Silent in tests.
+    logger: config.NODE_ENV !== 'test',
+    bodyLimit: 256 * 1024,
+    trustProxy: config.TRUST_PROXY,
+  });
   const clock = now ?? Date.now;
 
   await app.register(cors, {

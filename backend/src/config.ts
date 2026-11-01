@@ -5,6 +5,11 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   /** Bind to 127.0.0.1 by default; use 0.0.0.0 to reach the API from a phone on your network. */
   HOST: z.string().default('127.0.0.1'),
+  /** Set to true behind a reverse proxy (Railway, Fly, nginx) so rate limits see each client's real IP. */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   DATABASE_PATH: z.string().default('./data/fitsphere.db'),
   /** Signs access tokens. Required, at least 32 characters, never committed. */
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
