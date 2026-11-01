@@ -11,7 +11,7 @@ import type {
 import { addDays, dateKey } from '@/utils/date';
 
 export const DEFAULT_DRAFT: OnboardingDraft = {
-  identity: { name: 'Alex', age: 28 },
+  identity: { name: 'Alex Chen', age: 28 },
   profile: {
     goal: 'muscle',
     sex: 'male',

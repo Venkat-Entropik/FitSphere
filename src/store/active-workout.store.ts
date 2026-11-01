@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 
 import { zustandAsyncStorage } from '@/services/storage/app-storage';
 
+import { usePreferencesStore } from './preferences.store';
+
 import { notifySuccess } from '@/utils/haptics';
 
 import type {
@@ -63,7 +65,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           session: logActiveSet(session),
           rest: { totalSeconds: DEFAULT_REST_SECONDS, endsAt: now + DEFAULT_REST_SECONDS * 1000 },
         });
-        notifySuccess();
+        if (usePreferencesStore.getState().restHaptics) notifySuccess();
       },
 
       addRest: (seconds = REST_EXTENSION_SECONDS) => {

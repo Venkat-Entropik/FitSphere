@@ -2,9 +2,10 @@
 
 AI-powered fitness and wellness app — Expo SDK 58, React Native, TypeScript (strict), Expo Router.
 
-> **Status: Phase 3 (business logic) done.** Every screen now runs on real logic over a persisted
-> mock backend. Still placeholders: Login, Register and Profile _screens_ (no designs) — their logic
-> (`useProfile`, `useUpdateProfile`, `useLogWeight`) exists.
+> **Status:** every Stitch-designed screen (including **Profile & Settings**) is built and runs on
+> real logic over a persisted mock backend. Login and Register still have no design (Login offers a
+> demo-mode button when mocks are on). On Profile, paired sensors and the membership card are
+> clearly-labelled **sample** UI — there is no device-pairing or billing backend.
 
 ## Getting started
 

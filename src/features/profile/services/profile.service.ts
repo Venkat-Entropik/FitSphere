@@ -70,11 +70,12 @@ const mockRepository: ProfileRepository = {
   logWeight: async (input, now = Date.now()) => {
     await dbReady();
     const db = useMockDb.getState();
+    // Current mass follows the newest logged weight; reject impossible values before logging them.
+    const result = applyProfilePatch(db.profile, { weightKg: input.kg }, now);
+    if (!result.ok) throw new ProfileValidationError(result.errors);
     const entry: WeightEntry = { id: `weight-${now}`, dateKey: dateKey(now), ...input };
     const weights = upsertWeight(db.weights, entry);
-    // Current mass follows the newest logged weight.
-    const result = applyProfilePatch(db.profile, { weightKg: input.kg }, now);
-    useMockDb.setState({ weights, ...(result.ok ? { profile: result.profile } : {}) });
+    useMockDb.setState({ weights, profile: result.profile });
     return weights;
   },
 };

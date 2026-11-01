@@ -13,6 +13,8 @@ export interface SegmentedControlProps<T extends string> {
   trackColor?: ColorToken;
   /** Glow behind the selected segment (onboarding style). */
   glowing?: boolean;
+  /** Options that are shown but can't be chosen (e.g. not available yet). */
+  disabledOptions?: readonly T[];
 }
 
 /** Pill segmented control (Stitch time-range selector). */
@@ -23,6 +25,7 @@ export function SegmentedControl<T extends string>({
   accessibilityLabel,
   trackColor = 'surfaceLow',
   glowing = false,
+  disabledOptions = [],
 }: SegmentedControlProps<T>) {
   const theme = useTheme();
   return (
@@ -38,11 +41,13 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((option) => {
         const selected = option === value;
+        const disabled = disabledOptions.includes(option);
         return (
           <Pressable
             key={option}
             accessibilityRole="tab"
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, disabled }}
+            disabled={disabled}
             accessibilityLabel={option}
             onPress={() => onChange(option)}
             style={{
@@ -52,6 +57,7 @@ export function SegmentedControl<T extends string>({
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: theme.radius.pill,
+              opacity: disabled ? 0.4 : 1,
               backgroundColor: selected ? theme.colors.primary : 'transparent',
               ...(selected && glowing ? theme.shadows.softPrimaryGlow : {}),
             }}

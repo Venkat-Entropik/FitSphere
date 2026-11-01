@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 
 import { useActiveWorkoutStore } from '@/store/active-workout.store';
+import { usePreferencesStore } from '@/store/preferences.store';
 
 import { workoutService } from '../services/workout.service';
 import { buildSessionFromPlan, nextPlan } from '../utils/workout-history.logic';
@@ -34,9 +35,11 @@ export function useStartWorkout() {
           }),
         ]);
         const plan = plans.find((p) => p.id === planId) ?? nextPlan(history, plans);
-        useActiveWorkoutStore
-          .getState()
-          .start(buildSessionFromPlan(plan, catalog, history, Date.now()));
+        useActiveWorkoutStore.getState().start(
+          buildSessionFromPlan(plan, catalog, history, Date.now(), {
+            autoOverload: usePreferencesStore.getState().autoProgressiveOverload,
+          }),
+        );
       }
       router.navigate('/workouts');
     },

@@ -142,7 +142,7 @@ export function composeDay(
 ): DailyNutrition {
   const meals = [...record.meals].sort((a, b) => (a.loggedAt ?? 0) - (b.loggedAt ?? 0));
   return {
-    athleteName: profile.identity.name,
+    athleteName: profile.identity.name.split(' ')[0]!,
     weightKg: profile.profile.weightKg,
     goalLabel:
       goalById(profile.profile.goal).title === 'Build Muscle'

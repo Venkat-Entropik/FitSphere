@@ -181,7 +181,7 @@ export function buildDashboard(input: DashboardInput): DashboardSummary {
       : 'Recovery is lower than usual — consider an easier session or a rest day today.';
 
   return {
-    athleteName: profile.identity.name,
+    athleteName: profile.identity.name.split(' ')[0]!,
     goalLabel: goal.title,
     streakDays: currentStreak(
       [...workouts, ...activities].map((r) => dateKey(r.startedAt)),

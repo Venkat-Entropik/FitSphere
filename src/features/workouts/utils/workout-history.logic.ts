@@ -170,6 +170,25 @@ export function suggestOverload(
   };
 }
 
+/** With auto-overload off: do what you did last time (same weight, best rep count), or start fresh. */
+export function repeatLastSession(
+  exercise: Exercise,
+  sessions: readonly (readonly RecordedSet[])[],
+): OverloadSuggestion {
+  const last = sessions[0];
+  if (!last || last.length === 0) {
+    return {
+      exerciseId: exercise.id,
+      kg: exercise.startKg,
+      reps: exercise.repRange[0],
+      reason: 'start',
+    };
+  }
+  const kg = Math.max(...last.map((s) => s.kg));
+  const reps = Math.max(...last.filter((s) => s.kg === kg).map((s) => s.reps));
+  return { exerciseId: exercise.id, kg, reps, reason: 'repeat' };
+}
+
 /** The plan after the one most recently completed, so training rotates through the plans. */
 export function nextPlan(
   records: readonly WorkoutRecord[],
@@ -191,12 +210,16 @@ export function buildSessionFromPlan(
   catalog: readonly Exercise[],
   records: readonly WorkoutRecord[],
   now: number,
+  options: { autoOverload?: boolean } = {},
 ): ActiveSessionTemplate {
+  const { autoOverload = true } = options;
   const bests = personalBests(records);
   const exercises: SessionExercise[] = plan.exercises.map((slot, exerciseIndex) => {
     const info = catalog.find((c) => c.id === slot.exerciseId)!;
     const sessions = exerciseSessions(records, info.id);
-    const target = suggestOverload(info, sessions);
+    const target = autoOverload
+      ? suggestOverload(info, sessions)
+      : repeatLastSession(info, sessions);
     const lastSets = sessions[0];
     const sets: WorkoutSet[] = Array.from({ length: slot.sets }, (_, i) => ({
       number: i + 1,
