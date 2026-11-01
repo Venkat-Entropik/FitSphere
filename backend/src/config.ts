@@ -10,7 +10,10 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
-  DATABASE_PATH: z.string().default('./data/fitsphere.db'),
+  /** Postgres connection string (e.g. from Neon). Required in production. */
+  DATABASE_URL: z.string().optional(),
+  /** Without DATABASE_URL, a local embedded Postgres (PGlite) keeps its files in this folder. */
+  DATABASE_PATH: z.string().default('./data/pglite'),
   /** Signs access tokens. Required, at least 32 characters, never committed. */
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().positive().default(15 * 60),

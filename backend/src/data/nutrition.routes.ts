@@ -20,7 +20,7 @@ export function registerNutritionRoutes(app: FastifyInstance, nutrition: Nutriti
     const parsed = foodBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
     const { date, id, loggedAt, ...meal } = parsed.data;
-    const day = nutrition.logMeal(request.userId!, date, {
+    const day = await nutrition.logMeal(request.userId!, date, {
       id: id ?? randomUUID(),
       loggedAt: loggedAt ?? now(),
       ...meal,

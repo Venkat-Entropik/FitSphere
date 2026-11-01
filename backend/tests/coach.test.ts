@@ -8,7 +8,8 @@ import { MAX_REPLY_CHARS } from '../src/ai/limits.js';
 import type { AiProvider, AiRequest } from '../src/ai/provider.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
+import type { Db } from '../src/db.js';
+import { testDb } from './helpers.js';
 
 const SECRET = 'test-secret-test-secret-test-secret-1234';
 const NOW = Date.parse('2026-11-01T12:00:00Z');
@@ -24,13 +25,13 @@ class FakeProvider implements AiProvider {
 
 interface Harness {
   app: FastifyInstance;
-  db: ReturnType<typeof openDatabase>;
+  db: Db;
   clock: { now: number };
 }
 const open: Harness[] = [];
 
 async function setup(ai: AiProvider | null, env: Record<string, string> = {}): Promise<Harness> {
-  const db = openDatabase(':memory:');
+  const db = await testDb();
   const clock = { now: NOW };
   const config = loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET, ...env });
   const app = await buildApp({ config, db, now: () => clock.now, ai });
@@ -42,7 +43,6 @@ async function setup(ai: AiProvider | null, env: Record<string, string> = {}): P
 afterEach(async () => {
   for (const h of open.splice(0)) {
     await h.app.close();
-    h.db.close();
   }
 });
 
@@ -359,15 +359,15 @@ describe('coach history isolation', () => {
     const res = await call(h, b.token, 'POST', '/coach/messages', { id: 'same-id', text: 'B question' });
     assert.equal(res.statusCode, 201);
     assert.equal((await call(h, a.token, 'GET', '/coach/messages')).json()[0].text, 'A private question');
-    h.db.prepare('DELETE FROM users WHERE id = ?').run(a.id);
-    assert.equal((h.db.prepare('SELECT COUNT(*) AS n FROM coach_messages WHERE user_id = ?').get(a.id) as { n: number }).n, 0);
+    await h.db.run('DELETE FROM users WHERE id = ?', [a.id]);
+    assert.equal((await h.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM coach_messages WHERE user_id = ?', [a.id]))!.n, 0);
   });
 
   it('trims stored history to a fixed size', async () => {
     const h = await setup(null);
     const a = await signUp(h, 'a@example.com');
     for (let i = 0; i < 105; i++) await call(h, a.token, 'POST', '/coach/messages', { text: `q${i}` });
-    const n = (h.db.prepare('SELECT COUNT(*) AS n FROM coach_messages WHERE user_id = ?').get(a.id) as { n: number }).n;
+    const n = (await h.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM coach_messages WHERE user_id = ?', [a.id]))!.n;
     assert.ok(n <= 200);
   });
 });

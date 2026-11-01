@@ -1,6 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
-
-import { transaction } from '../db.js';
+import type { Db } from '../db.js';
 import type { CoachPlan } from './fallback.js';
 import { MAX_STORED_MESSAGES } from './limits.js';
 
@@ -41,55 +39,67 @@ export interface CachedInsight {
 
 export type CoachRepository = ReturnType<typeof createCoachRepository>;
 
-export function createCoachRepository(db: DatabaseSync) {
+export function createCoachRepository(db: Db) {
   return {
     /** Oldest first, newest 100. */
-    list(userId: string, limit = 100): CoachMessageDto[] {
-      const rows = db
-        .prepare('SELECT id, role, text, plan, reply_to, created_at FROM coach_messages WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?')
-        .all(userId, limit) as unknown as Row[];
+    async list(userId: string, limit = 100): Promise<CoachMessageDto[]> {
+      const rows = await db.all<Row>(
+        'SELECT id, role, text, plan, reply_to, created_at FROM coach_messages WHERE user_id = ? ORDER BY created_at DESC, seq DESC LIMIT ?',
+        [userId, limit],
+      );
       return rows.reverse().map(toDto);
     },
 
     /** The assistant reply already stored for a user message id, so a retried request is not charged twice. */
-    replyFor(userId: string, userMessageId: string): CoachMessageDto | undefined {
-      const row = db
-        .prepare("SELECT id, role, text, plan, reply_to, created_at FROM coach_messages WHERE user_id = ? AND reply_to = ? AND role = 'assistant'")
-        .get(userId, userMessageId) as Row | undefined;
+    async replyFor(userId: string, userMessageId: string): Promise<CoachMessageDto | undefined> {
+      const row = await db.get<Row>(
+        "SELECT id, role, text, plan, reply_to, created_at FROM coach_messages WHERE user_id = ? AND reply_to = ? AND role = 'assistant'",
+        [userId, userMessageId],
+      );
       return row && toDto(row);
     },
 
-    userMessageExists(userId: string, id: string): boolean {
-      return !!db.prepare("SELECT 1 FROM coach_messages WHERE user_id = ? AND id = ? AND role = 'user'").get(userId, id);
+    async userMessageExists(userId: string, id: string): Promise<boolean> {
+      return !!(await db.get("SELECT 1 AS one FROM coach_messages WHERE user_id = ? AND id = ? AND role = 'user'", [userId, id]));
     },
 
     /** Stores the question and its answer together, then trims the history to a fixed size. */
-    saveExchange(userId: string, user: CoachMessageDto, assistant: CoachMessageDto): void {
-      transaction(db, () => {
-        const insert = db.prepare(
-          'INSERT INTO coach_messages (user_id, id, role, text, plan, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, id) DO NOTHING',
-        );
-        insert.run(userId, user.id, 'user', user.text, null, null, user.createdAt);
-        insert.run(userId, assistant.id, 'assistant', assistant.text, assistant.plan ? JSON.stringify(assistant.plan) : null, user.id, assistant.createdAt);
-        db.prepare(
+    async saveExchange(userId: string, user: CoachMessageDto, assistant: CoachMessageDto): Promise<void> {
+      await db.transaction(async (tx) => {
+        const insert = `INSERT INTO coach_messages (user_id, id, role, text, plan, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (user_id, id) DO NOTHING`;
+        await tx.run(insert, [userId, user.id, 'user', user.text, null, null, user.createdAt]);
+        await tx.run(insert, [
+          userId,
+          assistant.id,
+          'assistant',
+          assistant.text,
+          assistant.plan ? JSON.stringify(assistant.plan) : null,
+          user.id,
+          assistant.createdAt,
+        ]);
+        await tx.run(
           `DELETE FROM coach_messages WHERE user_id = ? AND id NOT IN (
-             SELECT id FROM coach_messages WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
-        ).run(userId, userId, MAX_STORED_MESSAGES);
+             SELECT id FROM coach_messages WHERE user_id = ? ORDER BY created_at DESC, seq DESC LIMIT ?)`,
+          [userId, userId, MAX_STORED_MESSAGES],
+        );
       });
     },
 
-    getInsight(userId: string, kind: string): CachedInsight | undefined {
-      const row = db.prepare('SELECT data, created_at FROM ai_cache WHERE user_id = ? AND kind = ?').get(userId, kind) as
-        | { data: string; created_at: number }
-        | undefined;
+    async getInsight(userId: string, kind: string): Promise<CachedInsight | undefined> {
+      const row = await db.get<{ data: string; created_at: number }>('SELECT data, created_at FROM ai_cache WHERE user_id = ? AND kind = ?', [
+        userId,
+        kind,
+      ]);
       return row && { ...(JSON.parse(row.data) as Omit<CachedInsight, 'createdAt'>), createdAt: row.created_at };
     },
 
-    putInsight(userId: string, kind: string, insight: Omit<CachedInsight, 'createdAt'>, now: number): void {
-      db.prepare(
+    async putInsight(userId: string, kind: string, insight: Omit<CachedInsight, 'createdAt'>, now: number): Promise<void> {
+      await db.run(
         `INSERT INTO ai_cache (user_id, kind, data, created_at) VALUES (?, ?, ?, ?)
          ON CONFLICT (user_id, kind) DO UPDATE SET data = excluded.data, created_at = excluded.created_at`,
-      ).run(userId, kind, JSON.stringify(insight), now);
+        [userId, kind, JSON.stringify(insight), now],
+      );
     },
   };
 }

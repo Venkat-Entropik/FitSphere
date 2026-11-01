@@ -5,19 +5,20 @@ import type { FastifyInstance } from 'fastify';
 
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
+import { openDatabase, type Db } from '../src/db.js';
+import { testDb } from './helpers.js';
 
 const SECRET = 'test-secret-test-secret-test-secret-1234';
 const NOW = Date.parse('2026-11-01T12:00:00Z');
 
 interface Harness {
   app: FastifyInstance;
-  db: ReturnType<typeof openDatabase>;
+  db: Db;
 }
 const open: Harness[] = [];
 
 async function setup(): Promise<Harness> {
-  const db = openDatabase(':memory:');
+  const db = await testDb();
   const app = await buildApp({ config: loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET }), db, now: () => NOW });
   const h = { app, db };
   open.push(h);
@@ -27,7 +28,6 @@ async function setup(): Promise<Harness> {
 afterEach(async () => {
   for (const h of open.splice(0)) {
     await h.app.close();
-    h.db.close();
   }
 });
 
@@ -123,7 +123,7 @@ describe('profile', () => {
   it('creates a default profile on register, named after the account', async () => {
     const h = await setup();
     const a = await signUp(h, 'a@example.com');
-    const row = h.db.prepare('SELECT onboarding_complete FROM profiles WHERE user_id = ?').get(a.id);
+    const row = await h.db.get('SELECT onboarding_complete FROM profiles WHERE user_id = ?', [a.id]);
     assert.ok(row, 'profile row exists right after register');
     const res = await call(h, a.token, 'GET', '/profile');
     assert.equal(res.statusCode, 200);
@@ -193,7 +193,7 @@ describe('profile', () => {
   it('creates the profile lazily for accounts that predate it', async () => {
     const h = await setup();
     const a = await signUp(h, 'a@example.com');
-    h.db.prepare('DELETE FROM profiles WHERE user_id = ?').run(a.id);
+    await h.db.run('DELETE FROM profiles WHERE user_id = ?', [a.id]);
     assert.equal((await call(h, a.token, 'GET', '/profile')).statusCode, 200);
   });
 });
@@ -335,28 +335,32 @@ describe('per-user isolation', () => {
     const h = await setup();
     const a = await signUp(h, 'a@example.com');
     await call(h, a.token, 'POST', '/workouts', body.workout());
-    h.db.prepare('DELETE FROM users WHERE id = ?').run(a.id);
-    assert.equal((h.db.prepare('SELECT COUNT(*) AS n FROM workouts').get() as { n: number }).n, 0);
+    await h.db.run('DELETE FROM users WHERE id = ?', [a.id]);
+    assert.equal((await h.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM workouts'))!.n, 0);
   });
 });
 
 describe('migrations', () => {
-  it('upgrades a database created before migrations were tracked, keeping its users', async () => {
-    const { DatabaseSync } = await import('node:sqlite');
+  it('keeps data across restarts and is safe to run again', async () => {
     const { mkdtempSync } = await import('node:fs');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
-    const path = join(mkdtempSync(join(tmpdir(), 'fitsphere-')), 'legacy.db');
-    const legacy = new DatabaseSync(path);
-    legacy.exec(`CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL, password_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
-      CREATE TABLE refresh_tokens (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER, replaced_by TEXT);
-      INSERT INTO users VALUES ('u1', 'old@example.com', 'Old User', 'x', 1);`);
-    legacy.close();
-    const db = openDatabase(path);
-    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n, 1);
-    assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'workouts'").get());
-    db.close();
-    // Re-opening is a no-op.
-    openDatabase(path).close();
+    const path = join(mkdtempSync(join(tmpdir(), 'fitsphere-')), 'pglite');
+
+    const first = await openDatabase({ path });
+    await first.run('INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)', ['u1', 'old@example.com', 'Old User', 'x', 1_793_542_000_000]);
+    await first.close();
+
+    const second = await openDatabase({ path }); // runs the migration check again
+    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM users'))!.n, 1);
+    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 4);
+    // Timestamps are far beyond 32 bits and come back as plain numbers.
+    assert.equal((await second.get<{ created_at: number }>('SELECT created_at FROM users'))!.created_at, 1_793_542_000_000);
+    await second.close();
+  });
+
+  it('converts ? placeholders to $n', async () => {
+    const { toPositional } = await import('../src/db.js');
+    assert.equal(toPositional('SELECT * FROM t WHERE a = ? AND b = ? LIMIT ?'), 'SELECT * FROM t WHERE a = $1 AND b = $2 LIMIT $3');
   });
 });

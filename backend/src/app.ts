@@ -1,6 +1,5 @@
 import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
-import type { DatabaseSync } from 'node:sqlite';
 import type { z } from 'zod';
 
 import { registerAccountRoutes } from './auth/account.routes.js';
@@ -19,6 +18,7 @@ import { createActivityRepository, createWorkoutRepository } from './data/record
 import { registerRecordRoutes } from './data/records.routes.js';
 import { createTokenService } from './auth/tokens.js';
 import type { Config } from './config.js';
+import type { Db } from './db.js';
 import { createFallbackMailer, createResendMailer, type Mailer } from './mail/mailer.js';
 import type { activityBody, workoutBody } from './data/schemas.js';
 
@@ -27,7 +27,7 @@ type ActivityRecord = z.infer<typeof activityBody>;
 
 export interface AppOptions {
   config: Config;
-  db: DatabaseSync;
+  db: Db;
   now?: () => number;
   /** Overrides the model provider (tests pass a fake; `null` forces rule-based answers). */
   ai?: AiProvider | null;

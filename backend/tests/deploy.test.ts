@@ -5,22 +5,22 @@ import type { FastifyInstance } from 'fastify';
 
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
+import type { Db } from '../src/db.js';
+import { testDb } from './helpers.js';
 
 const SECRET = 'test-secret-test-secret-test-secret-1234';
-const open: { app: FastifyInstance; db: ReturnType<typeof openDatabase> }[] = [];
+const open: { app: FastifyInstance }[] = [];
 
 async function setup(env: Record<string, string> = {}) {
-  const db = openDatabase(':memory:');
+  const db = await testDb();
   const app = await buildApp({ config: loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET, ...env }), db, ai: null });
-  open.push({ app, db });
+  open.push({ app });
   return app;
 }
 
 afterEach(async () => {
   for (const h of open.splice(0)) {
     await h.app.close();
-    h.db.close();
   }
 });
 

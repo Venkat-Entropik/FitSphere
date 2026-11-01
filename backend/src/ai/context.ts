@@ -40,15 +40,19 @@ export interface ContextSources {
   nutrition: NutritionRepository;
 }
 
-export function buildCoachContext(sources: ContextSources, userId: string, now: number): CoachContext {
-  const { profile: p, identity } = (() => {
-    const dto = sources.profiles.get(userId, now);
-    return { profile: dto.profile, identity: dto.identity };
-  })();
+export async function buildCoachContext(sources: ContextSources, userId: string, now: number): Promise<CoachContext> {
+  const dto = await sources.profiles.get(userId, now);
+  const p = dto.profile;
+  const identity = dto.identity;
 
-  const workouts = sources.workouts.list(userId);
-  const activities = sources.activities.list(userId);
-  const weights = sources.profiles.listWeights(userId);
+  const [workouts, activities, weights] = await Promise.all([
+    sources.workouts.list(userId),
+    sources.activities.list(userId),
+    sources.profiles.listWeights(userId),
+  ]);
+  const nutritionDays = await Promise.all(
+    [2, 1, 0].map((ago) => sources.nutrition.getDay(userId, dayKey(now - ago * DAY))),
+  );
 
   const inRange = <T extends { startedAt: number }>(items: T[], fromMs: number, toMs = now + DAY) =>
     items.filter((i) => i.startedAt >= fromMs && i.startedAt < toMs);
@@ -126,11 +130,9 @@ export function buildCoachContext(sources: ContextSources, userId: string, now: 
           ? Math.round((latestWeight.kg - baseline.kg) * 10) / 10
           : null,
     },
-    nutrition: [2, 1, 0].map((ago) => {
-      const date = dayKey(now - ago * DAY);
-      const d = sources.nutrition.getDay(userId, date);
+    nutrition: nutritionDays.map((d) => {
       return {
-        date,
+        date: d.dateKey,
         kcal: Math.round(d.meals.reduce((s, m) => s + m.kcal, 0)),
         protein: Math.round(d.meals.reduce((s, m) => s + m.protein, 0)),
         meals: d.meals.length,

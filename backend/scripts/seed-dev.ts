@@ -4,6 +4,7 @@
  *
  *   npm --prefix backend run seed:dev -- you@example.com
  *
+ * With the embedded database (no DATABASE_URL) stop the dev server first: only one process can open it.
  * The sample data comes from the app's own seed (src/services/mock-db/seed.ts), so there is one copy.
  */
 import { loadConfig } from '../src/config.js';
@@ -25,10 +26,11 @@ if (config.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-const db = openDatabase(config.DATABASE_PATH);
-const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
+const db = await openDatabase({ url: config.DATABASE_URL, path: config.DATABASE_PATH });
+const user = await db.get<{ id: string }>('SELECT id FROM users WHERE email = ?', [email]);
 if (!user) {
   console.error(`No account for ${email}. Register in the app first.`);
+  await await db.close();
   process.exit(1);
 }
 
@@ -39,19 +41,19 @@ const workouts = createWorkoutRepository<{ id: string; startedAt: number }>(db);
 const activities = createActivityRepository<{ id: string; startedAt: number }>(db);
 const nutrition = createNutritionRepository(db);
 
-// Each repository call is already atomic; no outer transaction (they are not re-entrant).
+// Each repository call is already atomic.
 {
-  profiles.replace(user.id, seed.profile.profile, now, seed.weights.at(-1)?.dateKey ?? '2026-01-01', 'seed-profile-weight');
-  for (const w of seed.weights) profiles.logWeight(user.id, w, now);
-  for (const w of seed.workouts) workouts.upsert(user.id, w);
-  for (const a of seed.activities) activities.upsert(user.id, a);
+  await profiles.replace(user.id, seed.profile.profile, now, seed.weights.at(-1)?.dateKey ?? '2026-01-01', 'seed-profile-weight');
+  for (const w of seed.weights) await profiles.logWeight(user.id, w, now);
+  for (const w of seed.workouts) await workouts.upsert(user.id, w);
+  for (const a of seed.activities) await activities.upsert(user.id, a);
   for (const day of Object.values(seed.nutritionDays)) {
-    for (const meal of day.meals) nutrition.logMeal(user.id, day.dateKey, meal);
-    nutrition.addWater(user.id, day.dateKey, day.hydrationMl);
+    for (const meal of day.meals) await nutrition.logMeal(user.id, day.dateKey, meal);
+    await nutrition.addWater(user.id, day.dateKey, day.hydrationMl);
   }
 }
 
 console.log(
   `Seeded ${email}: ${seed.workouts.length} workouts, ${seed.activities.length} activities, ${seed.weights.length} weights.`,
 );
-db.close();
+await db.close();

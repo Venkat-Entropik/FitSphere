@@ -58,13 +58,13 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
   const chatLimiter = createLoginLimiter(config.AI_CHAT_PER_HOUR, 3600);
   const insightLimiter = createLoginLimiter(INSIGHT_GENERATIONS_PER_HOUR, 3600);
 
-  const context = (userId: string): CoachContext => buildCoachContext(sources, userId, now());
+  const context = (userId: string): Promise<CoachContext> => buildCoachContext(sources, userId, now());
 
   /** Cached insight text; regenerated when the data changed or the entry is old, within a per-user budget. */
   async function insightText(userId: string, kind: InsightKind, c: CoachContext, rules: (c: CoachContext) => string) {
     const fingerprint = createHash('sha256').update(JSON.stringify(c)).digest('hex').slice(0, 16);
     const at = now();
-    const cached = coach.getInsight(userId, kind);
+    const cached = await coach.getInsight(userId, kind);
     const ttl = cached?.source === 'ai' ? INSIGHT_TTL_MS : FALLBACK_TTL_MS;
     if (cached && cached.fingerprint === fingerprint && at - cached.createdAt < ttl) return cached;
 
@@ -73,14 +73,14 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
       const text = await ai.insight(kind, c);
       if (text) {
         const fresh = { text, source: 'ai' as const, fingerprint };
-        coach.putInsight(userId, kind, fresh, at);
+        await coach.putInsight(userId, kind, fresh, at);
         return { ...fresh, createdAt: at };
       }
     } else if (cached) {
       return cached; // over budget: an older answer beats a new model call
     }
     const fresh = { text: rules(c), source: 'rules' as const, fingerprint };
-    coach.putInsight(userId, kind, fresh, at);
+    await coach.putInsight(userId, kind, fresh, at);
     return { ...fresh, createdAt: at };
   }
 
@@ -93,9 +93,9 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
 
     const userMessageId = parsed.data.id ?? randomUUID();
     // A retried request returns the stored answer instead of spending another model call.
-    const existing = coach.replyFor(userId, userMessageId);
+    const existing = await coach.replyFor(userId, userMessageId);
     if (existing) return reply.status(200).send(existing);
-    if (coach.userMessageExists(userId, userMessageId)) {
+    if (await coach.userMessageExists(userId, userMessageId)) {
       return fail(reply, 409, 'id_in_use', 'That message id has already been used.');
     }
 
@@ -106,10 +106,11 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
     }
     chatLimiter.recordFailure(userId, at); // counts every message
 
-    const c = context(userId);
-    const history = coach
-      .list(userId, 8)
-      .map((m) => ({ role: m.role, text: m.text.slice(0, MAX_HISTORY_TURN_CHARS) }));
+    const c = await context(userId);
+    const history = (await coach.list(userId, 8)).map((m) => ({
+      role: m.role,
+      text: m.text.slice(0, MAX_HISTORY_TURN_CHARS),
+    }));
 
     const answer = (await ai.chat(c, history, parsed.data.text)) ?? ruleReply(parsed.data.text, c);
 
@@ -122,7 +123,7 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
       ...(answer.plan && { plan: answer.plan }),
       showDisclaimer: true,
     };
-    coach.saveExchange(userId, user, assistant);
+    await coach.saveExchange(userId, user, assistant);
     return reply.status(201).send(assistant);
   });
 
@@ -130,7 +131,7 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
 
   app.get('/coach/overview', auth, async (request) => {
     const userId = request.userId!;
-    const c = context(userId);
+    const c = await context(userId);
     const at = now();
     const done = c.week.workouts + c.week.runs;
     const since = c.daysSinceLastSession;
@@ -177,12 +178,12 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
   });
 
   app.get('/insights/dashboard', auth, async (request) => {
-    const i = await insightText(request.userId!, 'dashboard', context(request.userId!), dashboardInsight);
+    const i = await insightText(request.userId!, 'dashboard', await context(request.userId!), dashboardInsight);
     return { suggestion: i.text, source: i.source, disclaimer: DISCLAIMER_TEXT };
   });
 
   app.get('/insights/nutrition', auth, async (request) => {
-    const i = await insightText(request.userId!, 'nutrition', context(request.userId!), nutritionTip);
+    const i = await insightText(request.userId!, 'nutrition', await context(request.userId!), nutritionTip);
     return { tip: i.text, source: i.source, disclaimer: DISCLAIMER_TEXT };
   });
 }

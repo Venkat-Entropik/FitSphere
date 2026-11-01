@@ -51,7 +51,7 @@ __tests__/      Jest tests
 
 ## Backend & authentication
 
-`backend/` is a TypeScript API (Fastify + Zod + Node's built-in SQLite) with its own `package.json`.
+`backend/` is a TypeScript API (Fastify + Zod + PostgreSQL) with its own `package.json`.
 It implements **auth** (sign-up, sign-in, token refresh, sign-out, `/auth/me`) and **per-user data**:
 profile and weights, workouts, activities, and nutrition (foods and water). Every data route requires the
 bearer token and is scoped to the token's user id; the server stores raw records and the app computes the
@@ -84,8 +84,9 @@ On a physical phone `localhost` is the phone itself: run the API with `HOST=0.0.
   them to Sign in. Signed-out users can only reach `(auth)`; signed-in users only the app and onboarding.
 - **Not yet:** email verification, password reset, social login. In mock mode the sample database is reset
   when a different account signs in; with the real backend each account's data lives on the server.
-- Node's `node:sqlite` is experimental and prints a warning; the SQL is plain ANSI, so moving to
-  Postgres is mechanical.
+- **Database:** PostgreSQL. Set `DATABASE_URL` (for example a free Neon database) for a real server. With
+  no `DATABASE_URL`, the backend runs an embedded Postgres (PGlite) that keeps its files in `backend/data/pglite`,
+  so local development needs nothing installed. Tests use the same embedded Postgres in memory.
 
 ## Business logic (Phase 3)
 

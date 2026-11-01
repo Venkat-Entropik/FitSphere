@@ -44,7 +44,7 @@ export interface AuthDeps {
   tokens: TokenService;
   now?: () => number;
   /** Called once after a new account is created (e.g. to give it a default profile). */
-  onUserCreated?: (user: UserRow) => void;
+  onUserCreated?: (user: UserRow) => void | Promise<void>;
 }
 
 export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
@@ -56,7 +56,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
   async function issueSession(user: UserRow) {
     const refreshToken = newRefreshToken();
     const issuedAt = now();
-    users.insertRefreshToken({
+    await users.insertRefreshToken({
       id: randomUUID(),
       userId: user.id,
       tokenHash: hashRefreshToken(refreshToken),
@@ -77,7 +77,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const header = request.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
     const userId = token ? await tokens.verifyAccessToken(token) : null;
-    if (!userId || !users.findUserById(userId)) {
+    if (!userId || !(await users.findUserById(userId))) {
       return fail(reply, 401, 'unauthorized', 'Your session has expired. Please sign in again.');
     }
     request.userId = userId;
@@ -91,7 +91,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const parsed = registerBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
 
-    const created = users.createUser({
+    const created = await users.createUser({
       id: randomUUID(),
       email: parsed.data.email,
       name: parsed.data.name,
@@ -100,7 +100,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     });
     if (!created) return fail(reply, 409, 'email_taken', 'An account with this email already exists.', { fieldErrors: { email: 'An account with this email already exists.' } });
 
-    deps.onUserCreated?.(created);
+    await deps.onUserCreated?.(created);
     return reply.status(201).send(await issueSession(created));
   });
 
@@ -114,7 +114,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', `Too many failed attempts. Try again in ${Math.ceil(blocked / 60)} min.`);
     }
 
-    const user = users.findUserByEmail(parsed.data.email);
+    const user = await users.findUserByEmail(parsed.data.email);
     const ok = user ? await verifyPassword(parsed.data.password, user.passwordHash) : await verifyAgainstDecoy(parsed.data.password);
     if (!user || !ok) {
       loginLimiter.recordFailure(key, now());
@@ -130,35 +130,35 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const parsed = refreshBody.safeParse(request.body);
     if (!parsed.success) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
 
-    const stored = users.findRefreshToken(hashRefreshToken(parsed.data.refreshToken));
+    const stored = await users.findRefreshToken(hashRefreshToken(parsed.data.refreshToken));
     const at = now();
     if (!stored) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
     if (stored.revokedAt !== null) {
-      users.revokeAllForUser(stored.userId, at);
+      await users.revokeAllForUser(stored.userId, at);
       return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
     }
-    const user = users.findUserById(stored.userId);
+    const user = await users.findUserById(stored.userId);
     if (stored.expiresAt <= at || !user) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
 
     const session = await issueSession(user);
-    const next = users.findRefreshToken(hashRefreshToken(session.tokens.refreshToken));
-    users.revokeRefreshToken(stored.id, at, next?.id ?? null);
-    users.pruneExpired(at);
+    const next = await users.findRefreshToken(hashRefreshToken(session.tokens.refreshToken));
+    await users.revokeRefreshToken(stored.id, at, next?.id ?? null);
+    await users.pruneExpired(at);
     return { tokens: session.tokens };
   });
 
   app.post('/auth/logout', async (request, reply) => {
     const parsed = refreshBody.safeParse(request.body);
     if (parsed.success) {
-      const stored = users.findRefreshToken(hashRefreshToken(parsed.data.refreshToken));
-      if (stored) users.revokeRefreshToken(stored.id, now());
+      const stored = await users.findRefreshToken(hashRefreshToken(parsed.data.refreshToken));
+      if (stored) await users.revokeRefreshToken(stored.id, now());
     }
     // Always 204: logging out must succeed even if the token was already gone.
     return reply.status(204).send();
   });
 
   app.get('/auth/me', { preHandler: app.authenticate }, async (request) => {
-    const user = users.findUserById(request.userId!);
+    const user = await users.findUserById(request.userId!);
     return { user: publicUser(user!) };
   });
 }

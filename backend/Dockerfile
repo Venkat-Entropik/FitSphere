@@ -11,11 +11,8 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 
-# Listen on all interfaces. The platform sets PORT. Data lives on a mounted volume at /data.
-ENV HOST=0.0.0.0 \
-    DATABASE_PATH=/data/fitsphere.db
-RUN mkdir -p /data
-VOLUME ["/data"]
+# Listen on all interfaces. The platform sets PORT. Data lives in Postgres (DATABASE_URL), not on this container's disk.
+ENV HOST=0.0.0.0
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \

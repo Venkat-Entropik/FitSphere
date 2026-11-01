@@ -8,14 +8,15 @@ import { buildApp } from '../src/app.js';
 import { hashPassword, verifyPassword } from '../src/auth/passwords.js';
 import { createLoginLimiter } from '../src/auth/rate-limit.js';
 import { loadConfig, type Config } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
+import type { Db } from '../src/db.js';
+import { freshDb, testDb } from './helpers.js';
 
 const SECRET = 'test-secret-test-secret-test-secret-1234';
 const ok = { name: 'Alex Chen', email: 'alex@example.com', password: 'Passw0rdOK' };
 
 interface Harness {
   app: FastifyInstance;
-  db: ReturnType<typeof openDatabase>;
+  db: Db;
   clock: { now: number };
 }
 
@@ -23,7 +24,7 @@ const open: Harness[] = [];
 
 async function setup(overrides: Partial<Record<string, string>> = {}): Promise<Harness> {
   const config: Config = loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET, ...overrides });
-  const db = openDatabase(':memory:');
+  const db = await testDb();
   const clock = { now: Date.parse('2026-11-01T12:00:00Z') };
   const app = await buildApp({ config, db, now: () => clock.now });
   const harness = { app, db, clock };
@@ -34,7 +35,6 @@ async function setup(overrides: Partial<Record<string, string>> = {}): Promise<H
 afterEach(async () => {
   for (const h of open.splice(0)) {
     await h.app.close();
-    h.db.close();
   }
 });
 
@@ -68,10 +68,10 @@ describe('POST /auth/register', () => {
   it('stores a salted hash, never the password or the raw refresh token', async () => {
     const h = await setup();
     const { tokens } = (await register(h)).json();
-    const row = h.db.prepare('SELECT password_hash FROM users').get() as { password_hash: string };
+    const row = (await h.db.get<{ password_hash: string }>('SELECT password_hash FROM users'))!;
     assert.match(row.password_hash, /^scrypt\$16384\$8\$1\$/);
     assert.ok(!row.password_hash.includes(ok.password));
-    const refresh = h.db.prepare('SELECT token_hash FROM refresh_tokens').get() as { token_hash: string };
+    const refresh = (await h.db.get<{ token_hash: string }>('SELECT token_hash FROM refresh_tokens'))!;
     assert.notEqual(refresh.token_hash, tokens.refreshToken);
     assert.equal(refresh.token_hash.length, 64);
   });
@@ -191,7 +191,7 @@ describe('GET /auth/me and token validation', () => {
   it('rejects a valid token whose user no longer exists', async () => {
     const h = await setup();
     const { tokens } = (await register(h)).json();
-    h.db.exec('DELETE FROM users');
+    await h.db.exec('DELETE FROM users');
     const res = await h.app.inject({ method: 'GET', url: '/auth/me', headers: { authorization: `Bearer ${tokens.accessToken}` } });
     assert.equal(res.statusCode, 401);
   });
@@ -281,12 +281,20 @@ describe('passwords and limiter units', () => {
 
 describe('GET /health and error handling', () => {
   it('reports ok and hides internals on server errors', async () => {
-    const h = await setup();
-    assert.deepEqual((await h.app.inject({ method: 'GET', url: '/health' })).json(), { status: 'ok' });
-    h.db.exec('DROP TABLE users');
-    const res = await register(h);
-    assert.equal(res.statusCode, 500);
-    assert.equal(res.json().code, 'internal_error');
-    assert.ok(!/users|sqlite|SQL/i.test(res.body));
+    // Its own database: dropping a table must not damage the shared one.
+    const db = await freshDb();
+    const config = loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET });
+    const app = await buildApp({ config, db, ai: null });
+    try {
+      assert.deepEqual((await app.inject({ method: 'GET', url: '/health' })).json(), { status: 'ok' });
+      await db.exec('DROP TABLE users CASCADE');
+      const res = await app.inject({ method: 'POST', url: '/auth/register', payload: ok });
+      assert.equal(res.statusCode, 500);
+      assert.equal(res.json().code, 'internal_error');
+      assert.ok(!/users|postgres|SQL|relation/i.test(res.body));
+    } finally {
+      await app.close();
+      await db.close();
+    }
   });
 });

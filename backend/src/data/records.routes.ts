@@ -19,7 +19,7 @@ export function registerRecordRoutes(
   app.post('/workouts', auth, async (request, reply) => {
     const parsed = workoutBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
-    return reply.status(201).send(stores.workouts.upsert(request.userId!, parsed.data));
+    return reply.status(201).send(await stores.workouts.upsert(request.userId!, parsed.data));
   });
 
   app.get('/activities', auth, async (request) => stores.activities.list(request.userId!));
@@ -27,6 +27,6 @@ export function registerRecordRoutes(
   app.post('/activities', auth, async (request, reply) => {
     const parsed = activityBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
-    return reply.status(201).send(stores.activities.upsert(request.userId!, parsed.data));
+    return reply.status(201).send(await stores.activities.upsert(request.userId!, parsed.data));
   });
 }

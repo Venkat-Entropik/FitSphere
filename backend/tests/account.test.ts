@@ -5,7 +5,8 @@ import type { FastifyInstance } from 'fastify';
 
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
+import type { Db } from '../src/db.js';
+import { testDb } from './helpers.js';
 import { createFallbackMailer, createResendMailer, type Email, type Mailer } from '../src/mail/mailer.js';
 
 const SECRET = 'test-secret-test-secret-test-secret-1234';
@@ -28,14 +29,14 @@ class FakeMailer implements Mailer {
 
 interface Harness {
   app: FastifyInstance;
-  db: ReturnType<typeof openDatabase>;
+  db: Db;
   mail: FakeMailer;
   clock: { now: number };
 }
 const open: Harness[] = [];
 
 async function setup(): Promise<Harness> {
-  const db = openDatabase(':memory:');
+  const db = await testDb();
   const mail = new FakeMailer();
   const clock = { now: NOW };
   const app = await buildApp({ config: loadConfig({ NODE_ENV: 'test', JWT_SECRET: SECRET }), db, now: () => clock.now, ai: null, mailer: mail });
@@ -47,7 +48,6 @@ async function setup(): Promise<Harness> {
 afterEach(async () => {
   for (const h of open.splice(0)) {
     await h.app.close();
-    h.db.close();
   }
 });
 
@@ -59,8 +59,8 @@ async function signUp(h: Harness, email: string) {
   return { token: res.json().tokens.accessToken as string, refresh: res.json().tokens.refreshToken as string, id: res.json().user.id as string };
 }
 
-const count = (h: Harness, table: string, userId: string) =>
-  (h.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(userId) as { n: number }).n;
+const count = async (h: Harness, table: string, userId: string) =>
+  (await h.db.get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`, [userId]))!.n;
 
 describe('POST /auth/forgot-password', () => {
   it('emails a 6-digit code to a registered address', async () => {
@@ -87,7 +87,7 @@ describe('POST /auth/forgot-password', () => {
     const h = await setup();
     const a = await signUp(h, 'a@example.com');
     await post(h, '/auth/forgot-password', { email: 'a@example.com' });
-    const row = h.db.prepare('SELECT code_hash FROM password_resets WHERE user_id = ?').get(a.id) as { code_hash: string };
+    const row = (await h.db.get<{ code_hash: string }>('SELECT code_hash FROM password_resets WHERE user_id = ?', [a.id]))!;
     assert.ok(!row.code_hash.includes(h.mail.codeFor('a@example.com')));
     assert.equal(row.code_hash.length, 64);
   });
@@ -142,7 +142,7 @@ describe('POST /auth/reset-password', () => {
     assert.equal(first.json().code, 'invalid_code');
     for (let i = 0; i < 4; i++) await reset(h, wrong);
     // The code itself is gone, independent of the client-side lockout.
-    assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM password_resets').get()?.n, 0);
+    assert.equal((await h.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM password_resets'))?.n, 0);
     h.clock.now += 16 * 60_000; // past the lockout window, so only the burned code can fail
     assert.equal((await reset(h, code)).statusCode, 400);
     assert.equal((await post(h, '/auth/login', { email: 'a@example.com', password: PASSWORD })).statusCode, 200);
@@ -224,7 +224,7 @@ describe('POST /auth/delete-account', () => {
     const res = await post(h, '/auth/delete-account', { password: 'WrongPass1' }, a.token);
     assert.equal(res.statusCode, 403);
     assert.equal(res.json().code, 'invalid_credentials');
-    assert.equal(count(h, 'profiles', a.id), 1);
+    assert.equal(await count(h, 'profiles', a.id), 1);
     assert.equal((await post(h, '/auth/login', { email: 'a@example.com', password: PASSWORD })).statusCode, 200);
   });
 
@@ -240,7 +240,7 @@ describe('POST /auth/delete-account', () => {
     assert.equal(res.statusCode, 204);
     for (const table of ['users', 'profiles', 'weights', 'nutrition_foods', 'nutrition_water', 'coach_messages', 'refresh_tokens', 'password_resets']) {
       const column = table === 'users' ? 'id' : 'user_id';
-      const n = (h.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = ?`).get(a.id) as { n: number }).n;
+      const n = (await h.db.get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = ?`, [a.id]))!.n;
       assert.equal(n, 0, `${table} still has rows for the deleted user`);
     }
     assert.equal((await post(h, '/auth/login', { email: 'a@example.com', password: PASSWORD })).statusCode, 401);
@@ -248,8 +248,8 @@ describe('POST /auth/delete-account', () => {
     assert.equal((await post(h, '/auth/refresh', { refreshToken: a.refresh })).statusCode, 401);
     // The email can be registered again, and the other user is untouched.
     assert.equal((await post(h, '/auth/register', { name: 'New A', email: 'a@example.com', password: PASSWORD })).statusCode, 201);
-    assert.equal(count(h, 'profiles', b.id), 1);
-    assert.equal(count(h, 'coach_messages', b.id), 2);
+    assert.equal(await count(h, 'profiles', b.id), 1);
+    assert.equal(await count(h, 'coach_messages', b.id), 2);
   });
 
   it('rate limits wrong-password attempts', async () => {

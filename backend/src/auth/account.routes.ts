@@ -67,10 +67,10 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
     forgotIp.recordFailure(request.ip, at); // counts every request, known account or not
     forgotEmail.recordFailure(address, at);
 
-    const user = users.findUserByEmail(address);
+    const user = await users.findUserByEmail(address);
     if (user) {
       const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-      users.putResetCode({ userId: user.id, codeHash: hashCode(user.id, code), expiresAt: at + RESET_TTL_MS, now: at });
+      await users.putResetCode({ userId: user.id, codeHash: hashCode(user.id, code), expiresAt: at + RESET_TTL_MS, now: at });
       sendInBackground({
         to: user.email,
         subject: 'Your FitSphere password reset code',
@@ -99,23 +99,23 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
       });
     };
 
-    const user = users.findUserByEmail(address);
-    const reset = user ? users.findResetCode(user.id) : undefined;
+    const user = await users.findUserByEmail(address);
+    const reset = user ? await users.findResetCode(user.id) : undefined;
     if (!user || !reset) return invalid();
     if (reset.expires_at <= at) {
-      users.deleteResetCode(user.id);
+      await users.deleteResetCode(user.id);
       return invalid();
     }
     if (!sameHash(reset.code_hash, hashCode(user.id, code))) {
-      users.addResetAttempt(user.id);
+      await users.addResetAttempt(user.id);
       // A 6-digit code can't survive guessing, so it is burned after a few misses.
-      if (reset.attempts + 1 >= MAX_CODE_ATTEMPTS) users.deleteResetCode(user.id);
+      if (reset.attempts + 1 >= MAX_CODE_ATTEMPTS) await users.deleteResetCode(user.id);
       return invalid();
     }
 
-    users.setPassword(user.id, await hashPassword(password));
-    users.deleteResetCode(user.id);
-    users.revokeAllForUser(user.id, at); // signs the account out everywhere
+    await users.setPassword(user.id, await hashPassword(password));
+    await users.deleteResetCode(user.id);
+    await users.revokeAllForUser(user.id, at); // signs the account out everywhere
     resetFailures.reset(key);
     sendInBackground({
       to: user.email,
@@ -136,14 +136,14 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
     if (blocked > 0) {
       return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', 'Too many attempts. Try again later.');
     }
-    const user = users.findUserById(userId)!;
+    const user = (await users.findUserById(userId))!;
     // 403, not 401: the app treats 401 as an expired session and would try to refresh and retry.
     if (!(await verifyPassword(parsed.data.password, user.passwordHash))) {
       deleteFailures.recordFailure(userId, at);
       return fail(reply, 403, 'invalid_credentials', 'Incorrect password.', { fieldErrors: { password: 'Incorrect password.' } });
     }
 
-    users.deleteUser(userId);
+    await users.deleteUser(userId);
     deleteFailures.reset(userId);
     return reply.status(204).send();
   });
