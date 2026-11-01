@@ -56,16 +56,36 @@ export function SynthesisBanner({ synthesis }: { synthesis: ProgressOverview['sy
           </AppText>
         </View>
         <AppText variant="bodyMd" style={{ marginTop: 4, lineHeight: 20 }}>
-          Your progressive overload rate (
-          <AppText variant="bodyMd" color="primary" weight="semibold">
-            +{synthesis.weeklyVolumePercent}% weekly volume
-          </AppText>
-          ) is within optimal recovery boundaries. Current velocity places you on track to achieve
-          your{' '}
-          <AppText variant="bodyMd" color="secondary" weight="semibold">
-            {synthesis.milestoneKg.toFixed(1)} kg
-          </AppText>{' '}
-          milestone in {synthesis.weeksToMilestone} weeks.
+          {synthesis.weeklyVolumePercent === null ? (
+            'Log a full week of training to see how your volume is trending. '
+          ) : (
+            <>
+              Your weekly lifting volume is{' '}
+              <AppText variant="bodyMd" color="primary" weight="semibold">
+                {synthesis.weeklyVolumePercent >= 0 ? '+' : ''}
+                {synthesis.weeklyVolumePercent}% vs last week
+              </AppText>
+              .{' '}
+            </>
+          )}
+          {synthesis.weeksToMilestone === null ? (
+            <>
+              Keep logging your weight to estimate when you&apos;ll reach{' '}
+              <AppText variant="bodyMd" color="secondary" weight="semibold">
+                {synthesis.milestoneKg.toFixed(1)} kg
+              </AppText>
+              .
+            </>
+          ) : (
+            <>
+              At your current rate you&apos;ll reach{' '}
+              <AppText variant="bodyMd" color="secondary" weight="semibold">
+                {synthesis.milestoneKg.toFixed(1)} kg
+              </AppText>{' '}
+              in about {synthesis.weeksToMilestone}{' '}
+              {synthesis.weeksToMilestone === 1 ? 'week' : 'weeks'}.
+            </>
+          )}
         </AppText>
       </View>
     </LinearGradient>

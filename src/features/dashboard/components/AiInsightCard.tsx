@@ -34,7 +34,9 @@ export function AiInsightCard({ insight, onViewSession }: AiInsightCardProps) {
           </AppText>
         </View>
         <AppText variant="labelCaps" color="onSurfaceVariant">
-          Synced {insight.syncedMinutesAgo}m ago
+          {insight.syncedMinutesAgo < 1
+            ? 'Updated just now'
+            : `Synced ${insight.syncedMinutesAgo}m ago`}
         </AppText>
       </View>
       <AppText variant="bodyMd" style={{ lineHeight: 23, marginTop: 4 }}>

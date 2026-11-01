@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+import { zustandAsyncStorage } from '@/services/storage/app-storage';
 
 import { notifySuccess } from '@/utils/haptics';
 
@@ -27,50 +30,64 @@ interface ActiveWorkoutState {
   finish: () => void;
 }
 
-export const useActiveWorkoutStore = create<ActiveWorkoutState>()((set, get) => ({
-  session: null,
-  rest: null,
+export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
+  persist(
+    (set, get) => ({
+      session: null,
+      rest: null,
 
-  start: (template, now = Date.now()) => {
-    const { rest, ...session } = template;
-    set({
-      session,
-      rest: rest
-        ? { totalSeconds: rest.totalSeconds, endsAt: now + rest.remainingSeconds * 1000 }
-        : null,
-    });
-  },
+      start: (template, now = Date.now()) => {
+        const { rest, ...session } = template;
+        set({
+          session,
+          rest: rest
+            ? { totalSeconds: rest.totalSeconds, endsAt: now + rest.remainingSeconds * 1000 }
+            : null,
+        });
+      },
 
-  adjustWeight: (direction) => {
-    const { session } = get();
-    if (session) set({ session: adjustActiveSet(session, { kg: KG_STEP * direction }) });
-  },
+      adjustWeight: (direction) => {
+        const { session } = get();
+        if (session) set({ session: adjustActiveSet(session, { kg: KG_STEP * direction }) });
+      },
 
-  adjustReps: (direction) => {
-    const { session } = get();
-    if (session) set({ session: adjustActiveSet(session, { reps: direction }) });
-  },
+      adjustReps: (direction) => {
+        const { session } = get();
+        if (session) set({ session: adjustActiveSet(session, { reps: direction }) });
+      },
 
-  logSet: (now = Date.now()) => {
-    const { session } = get();
-    if (!session) return;
-    set({
-      session: logActiveSet(session),
-      rest: { totalSeconds: DEFAULT_REST_SECONDS, endsAt: now + DEFAULT_REST_SECONDS * 1000 },
-    });
-    notifySuccess();
-  },
+      logSet: (now = Date.now()) => {
+        const { session } = get();
+        if (!session) return;
+        set({
+          session: logActiveSet(session),
+          rest: { totalSeconds: DEFAULT_REST_SECONDS, endsAt: now + DEFAULT_REST_SECONDS * 1000 },
+        });
+        notifySuccess();
+      },
 
-  addRest: (seconds = REST_EXTENSION_SECONDS) => {
-    const { rest } = get();
-    if (rest) {
-      set({
-        rest: { totalSeconds: rest.totalSeconds + seconds, endsAt: rest.endsAt + seconds * 1000 },
-      });
-    }
-  },
+      addRest: (seconds = REST_EXTENSION_SECONDS) => {
+        const { rest } = get();
+        if (rest) {
+          set({
+            rest: {
+              totalSeconds: rest.totalSeconds + seconds,
+              endsAt: rest.endsAt + seconds * 1000,
+            },
+          });
+        }
+      },
 
-  skipRest: () => set({ rest: null }),
+      skipRest: () => set({ rest: null }),
 
-  finish: () => set({ session: null, rest: null }),
-}));
+      finish: () => set({ session: null, rest: null }),
+    }),
+    {
+      // The live session and rest timer survive app restarts (rest uses an absolute end time).
+      name: 'fitsphere.active-workout',
+      storage: zustandAsyncStorage,
+      version: 1,
+      partialize: ({ session, rest }) => ({ session, rest }),
+    },
+  ),
+);

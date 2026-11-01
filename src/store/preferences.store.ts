@@ -9,9 +9,11 @@ interface PreferencesState {
   units: UnitSystem;
   notificationsEnabled: boolean;
   onboardingComplete: boolean;
+  onboardingSkipped: boolean;
   setUnits: (units: UnitSystem) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   completeOnboarding: () => void;
+  skipOnboarding: () => void;
 }
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -20,9 +22,11 @@ export const usePreferencesStore = create<PreferencesState>()(
       units: 'metric',
       notificationsEnabled: false,
       onboardingComplete: false,
+      onboardingSkipped: false,
       setUnits: (units) => set({ units }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
       completeOnboarding: () => set({ onboardingComplete: true }),
+      skipOnboarding: () => set({ onboardingSkipped: true }),
     }),
     { name: 'fitsphere.preferences', storage: zustandAsyncStorage },
   ),

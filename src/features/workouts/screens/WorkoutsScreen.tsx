@@ -1,11 +1,14 @@
 import { useState } from 'react';
 
 import { Screen } from '@/components/common/Screen';
+import { AppText } from '@/components/ui/AppText';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
+import { useHydrated } from '@/hooks/useHydrated';
 import { useNow } from '@/hooks/useNow';
+import { toApiError } from '@/services/api/api-error';
 import { useActiveWorkoutStore } from '@/store/active-workout.store';
 
 import { ExerciseTrackerCard } from '../components/ExerciseTrackerCard';
@@ -14,7 +17,13 @@ import { RestTimerCard } from '../components/RestTimerCard';
 import { SessionTelemetryCard } from '../components/SessionTelemetryCard';
 import { WorkoutActionDock } from '../components/WorkoutActionDock';
 import { WorkoutCategoryChips } from '../components/WorkoutCategoryChips';
-import { useActiveSessionTemplate, useWorkoutCategories } from '../hooks/useWorkoutData';
+import { useStartWorkout } from '../hooks/useStartWorkout';
+import {
+  useFinishWorkout,
+  useNextPlan,
+  useWorkoutCategories,
+  useWorkoutPlans,
+} from '../hooks/useWorkoutData';
 import {
   activeSet,
   completedSetCount,
@@ -28,41 +37,62 @@ import {
 } from '../utils/workout.logic';
 
 export function WorkoutsScreen() {
+  const hydrated = useHydrated(useActiveWorkoutStore);
   const categories = useWorkoutCategories();
-  const template = useActiveSessionTemplate();
-  const { session, rest, start, adjustWeight, adjustReps, logSet, addRest, skipRest, finish } =
+  const plans = useWorkoutPlans();
+  const suggestedPlan = useNextPlan();
+  const startWorkout = useStartWorkout();
+  const finishWorkout = useFinishWorkout();
+  const { session, rest, adjustWeight, adjustReps, logSet, addRest, skipRest } =
     useActiveWorkoutStore();
-  const [categoryId, setCategoryId] = useState('push');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
 
-  // Ticks once per second only while a session or rest timer is on screen; cleared on unmount.
+  // Ticks once per second only while a session is on screen; cleared on unmount.
   const now = useNow(session !== null);
 
-  if (template.isPending || categories.isPending) {
+  if (!hydrated || categories.isPending || plans.isPending) {
     return (
       <Screen>
         <LoadingIndicator fullScreen label="Loading workout" />
       </Screen>
     );
   }
-  if (template.error || !template.data) {
+  if (categories.error || plans.error) {
     return (
       <Screen>
-        <ErrorState error={template.error} onRetry={() => void template.refetch()} />
+        <ErrorState
+          error={categories.error ?? plans.error}
+          onRetry={() => {
+            void categories.refetch();
+            void plans.refetch();
+          }}
+        />
       </Screen>
     );
   }
 
   const exercise = session ? currentExercise(session) : undefined;
   if (!session || !exercise) {
+    const selectedId = categoryId ?? suggestedPlan?.categoryId ?? 'push';
+    const plan = plans.data?.find((p) => p.categoryId === selectedId) ?? suggestedPlan;
     return (
-      <Screen>
+      <Screen scroll>
+        <WorkoutCategoryChips
+          categories={categories.data ?? []}
+          selectedId={selectedId}
+          onSelect={setCategoryId}
+        />
         <EmptyState
           icon="fitness_center"
           title="No active workout"
-          message="Start a session to log sets, track rest and see live volume."
-          actionLabel="Start Push Day"
-          onAction={() => start(template.data)}
+          message={
+            plan
+              ? `${plan.name}. Loads and rep targets are set from your last sessions.`
+              : 'Pick a day to start a session.'
+          }
+          actionLabel={plan ? `Start ${plan.name.split(' –')[0]}` : undefined}
+          onAction={plan ? () => void startWorkout(plan.id) : undefined}
         />
       </Screen>
     );
@@ -76,8 +106,8 @@ export function WorkoutsScreen() {
     <Screen scroll>
       <WorkoutCategoryChips
         categories={categories.data ?? []}
-        selectedId={categoryId}
-        onSelect={setCategoryId}
+        selectedId={plans.data?.find((p) => p.id === session.planId)?.categoryId ?? 'push'}
+        onSelect={() => undefined}
       />
       <SessionTelemetryCard
         title={session.title}
@@ -105,6 +135,12 @@ export function WorkoutsScreen() {
         />
       ) : null}
       {upNext ? <NextExerciseBar name={upNext.name} setCount={upNext.sets.length} /> : null}
+      {finishWorkout.error ? (
+        <AppText variant="bodySm" color="error" accessibilityRole="alert">
+          Couldn&apos;t save your workout: {toApiError(finishWorkout.error).message} Your sets are
+          still here — try again.
+        </AppText>
+      ) : null}
       <WorkoutActionDock
         logLabel={set ? `Log Set ${set.number}` : 'All sets logged'}
         canLog={Boolean(set)}
@@ -114,13 +150,14 @@ export function WorkoutsScreen() {
       <ConfirmationModal
         visible={confirmFinish}
         title="Finish workout?"
-        message="Your logged sets are saved. Sets you have not logged will be skipped."
+        message="Your logged sets are saved to your history. Sets you have not logged will be skipped."
         confirmLabel="Finish Workout"
         cancelLabel="Keep Going"
+        loading={finishWorkout.isPending}
         onCancel={() => setConfirmFinish(false)}
         onConfirm={() => {
           setConfirmFinish(false);
-          finish();
+          finishWorkout.mutate();
         }}
       />
     </Screen>

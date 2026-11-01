@@ -24,10 +24,10 @@ import {
 import { consumedMacros, loggedLabel, macroTip } from '../utils/nutrition.logic';
 
 export function NutritionScreen() {
-  const { data: day, isPending, error, refetch } = useNutritionDay();
-  const addWater = useAddWater();
-  const logMeal = useLogMeal();
-  const logRecommended = useLogRecommendedMeal();
+  const { data: day, dateKey, isPending, error, refetch } = useNutritionDay();
+  const addWater = useAddWater(dateKey, day?.hydrationGoalMl ?? 3500);
+  const logMeal = useLogMeal(dateKey);
+  const logRecommended = useLogRecommendedMeal(dateKey);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   if (isPending) {
@@ -46,6 +46,7 @@ export function NutritionScreen() {
   }
 
   const tip = macroTip(day);
+  const recommendation = day.recommendation;
   return (
     <Screen scroll>
       <DailyFuelCard day={day} consumedMacros={consumedMacros(day.meals)} />
@@ -70,10 +71,10 @@ export function NutritionScreen() {
         {day.meals.map((meal) => (
           <MealCard key={meal.id} meal={meal} />
         ))}
-        {day.recommendation ? (
+        {recommendation ? (
           <RecommendedMealCard
-            meal={day.recommendation}
-            onLog={() => logRecommended.mutate()}
+            meal={recommendation}
+            onLog={() => logRecommended.mutate(recommendation)}
             busy={logRecommended.isPending}
           />
         ) : null}

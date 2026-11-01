@@ -2,9 +2,9 @@
 
 AI-powered fitness and wellness app — Expo SDK 58, React Native, TypeScript (strict), Expo Router.
 
-> **Status: Phase 2 complete for every screen in the Stitch export** — Dashboard, Workouts, Activity,
-> AI Coach, Nutrition, Analytics, Progress, Onboarding. Not built: Login, Register and Profile (no
-> Stitch design exists for them).
+> **Status: Phase 3 (business logic) done.** Every screen now runs on real logic over a persisted
+> mock backend. Still placeholders: Login, Register and Profile _screens_ (no designs) — their logic
+> (`useProfile`, `useUpdateProfile`, `useLogWeight`) exists.
 
 ## Getting started
 
@@ -47,6 +47,24 @@ __tests__/      Jest tests
 - **API**: one axios client; request interceptor adds the bearer token, response interceptor
   normalizes every failure to `ApiError` and signs the user out on 401.
 - **Styling**: `StyleSheet` + tokens from `src/theme`. Components never hardcode colors.
+
+## Business logic (Phase 3)
+
+- **Mock backend.** `src/services/mock-db` is a persisted Zustand store seeded with flagged sample
+  history. Mock repositories read/write it exactly like a real API would; real repositories
+  (`EXPO_PUBLIC_USE_MOCKS=false`) talk to `API_ENDPOINTS` and ignore it.
+- **Server state** (TanStack Query) comes from repositories. **Client state** (Zustand): active workout
+  - rest timer (persisted), in-progress activity recording (persisted), preferences/onboarding.
+- **Pure logic, no UI:** `*.logic.ts` / `*.aggregate.ts` in each feature, covered by unit tests.
+  - _Workouts:_ session logic, PR detection, double-progression overload, plan rotation, sessions built
+    from history, 1RM/kcal estimates, exercise library filtering.
+  - _Activities:_ GPS filtering, distance/pace/splits/elevation, history, weekly totals, bests.
+  - _Nutrition:_ dated days, profile-derived targets, closest-fit meal recommender.
+  - _Profile:_ validated updates, Mifflin–St Jeor targets, weight log (one entry/day).
+  - _Analytics / Dashboard / Progress:_ aggregated from stored history for any range.
+- Writes invalidate dependents through one table (`services/api/invalidation.ts`).
+- Saves never discard state on failure: a failed workout/activity save keeps the live session.
+- Resting HR, HRV, sleep and steps have no sensor yet and are labelled sample values.
 
 ## Design
 

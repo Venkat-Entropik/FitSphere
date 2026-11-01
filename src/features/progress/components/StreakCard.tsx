@@ -55,7 +55,7 @@ export function StreakCard({ streak }: { streak: ProgressOverview['streak'] }) {
               </View>
             </View>
             <AppText variant="bodySm" color="onSurfaceVariant" style={{ marginTop: 2 }}>
-              Top {streak.topPercent}% of FitSphere Athletes this month
+              Longest streak: {streak.bestStreak} {streak.bestStreak === 1 ? 'day' : 'days'}
             </AppText>
           </View>
         </View>
@@ -83,18 +83,24 @@ export function StreakCard({ streak }: { streak: ProgressOverview['streak'] }) {
             Telemetry Heat Map
           </AppText>
           <AppText variant="labelCaps" color="primary" weight="medium">
-            {adherencePercent(streak.heatmap, streak.heatmap.length)}% Adherence
+            {adherencePercent(streak.heatmap)}% Adherence
           </AppText>
         </View>
         <View style={{ gap: 6 }}>
           {rows.map((row, r) => (
             <View key={r} style={{ flexDirection: 'row', gap: 6 }}>
               {row.map((cell) => {
-                const tint = cell.kind === 'cardio' ? theme.colors.secondary : theme.colors.primary;
+                const rest = cell.kind === 'rest';
+                const tint = rest
+                  ? theme.colors.surfaceHighest
+                  : cell.kind === 'cardio'
+                    ? theme.colors.secondary
+                    : theme.colors.primary;
+                const isLast = cell.day === lastDay;
                 return (
                   <View
                     key={cell.day}
-                    accessibilityLabel={`Day ${cell.day}, ${cell.kind} session`}
+                    accessibilityLabel={`Day ${cell.day}, ${rest ? 'rest day' : `${cell.kind} session`}`}
                     style={[
                       {
                         flex: 1,
@@ -103,18 +109,22 @@ export function StreakCard({ streak }: { streak: ProgressOverview['streak'] }) {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: tint,
-                        opacity: cell.day === lastDay ? 1 : 0.9,
+                        opacity: isLast || rest ? 1 : 0.9,
                       },
-                      glow(tint, cell.day === lastDay ? 0.6 : 0.25, cell.day === lastDay ? 12 : 8),
-                      cell.day === lastDay && {
-                        borderWidth: 2,
-                        borderColor: 'rgba(197, 242, 106, 0.6)',
-                      },
+                      !rest && glow(tint, isLast ? 0.6 : 0.25, isLast ? 12 : 8),
+                      isLast &&
+                        !rest && { borderWidth: 2, borderColor: 'rgba(197, 242, 106, 0.6)' },
                     ]}
                   >
                     <AppText
                       variant="labelCaps"
-                      color={cell.kind === 'cardio' ? 'onSecondary' : 'onPrimary'}
+                      color={
+                        rest
+                          ? 'onSurfaceVariant'
+                          : cell.kind === 'cardio'
+                            ? 'onSecondary'
+                            : 'onPrimary'
+                      }
                       weight="bold"
                       style={{ fontSize: 9 }}
                     >

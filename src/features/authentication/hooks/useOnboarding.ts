@@ -1,5 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { profileKeys } from '@/features/profile/hooks/useProfile';
+import { invalidateAfter } from '@/services/api/invalidation';
 import { usePreferencesStore } from '@/store/preferences.store';
 
 import { onboardingService } from '../services/onboarding.service';
@@ -14,10 +16,16 @@ export function useOnboardingDraft() {
   });
 }
 
+/** Saves the profile, marks onboarding done, and refreshes everything derived from the profile. */
 export function useSaveOnboarding() {
+  const queryClient = useQueryClient();
   const complete = usePreferencesStore((s) => s.completeOnboarding);
   return useMutation({
     mutationFn: onboardingService.saveProfile,
-    onSuccess: () => complete(),
+    onSuccess: async () => {
+      complete();
+      await queryClient.invalidateQueries({ queryKey: profileKeys.profile });
+      await invalidateAfter(queryClient, 'profile');
+    },
   });
 }

@@ -19,7 +19,7 @@ export function RecentLogsCard({ logs, onViewHistory }: RecentLogsCardProps) {
           title={log.title}
           subtitle={log.subtitle}
           trailingValue={`${log.kcal} kcal`}
-          trailingCaption={`${log.volumePercent}% Vol`}
+          trailingCaption={log.caption}
         />
       ))}
     </Card>

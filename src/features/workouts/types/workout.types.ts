@@ -30,6 +30,8 @@ export interface SessionExercise {
 /** Server/template shape for a session that is about to start or resume. */
 export interface ActiveSessionTemplate {
   id: string;
+  /** The plan this session was built from, when there is one. */
+  planId?: string | null;
   title: string;
   /** Epoch ms the session began. */
   startedAt: number;
@@ -49,6 +51,7 @@ export interface ActiveSessionTemplate {
 
 export interface ActiveSession {
   id: string;
+  planId?: string | null;
   title: string;
   startedAt: number;
   priorVolumeKg: number;

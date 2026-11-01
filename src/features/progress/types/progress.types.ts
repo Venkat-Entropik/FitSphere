@@ -3,7 +3,7 @@ export type Tone = 'primary' | 'secondary' | 'tertiary' | 'neutral';
 export interface HeatCell {
   day: number;
   /** lime = strength session, cyan = cardio session. */
-  kind: 'strength' | 'cardio';
+  kind: 'strength' | 'cardio' | 'rest';
 }
 
 export interface PersonalRecord {
@@ -41,12 +41,17 @@ export interface ProgressOverview {
   macrocycleLabel: string;
   streak: {
     days: number;
-    topPercent: number;
+    bestStreak: number;
     weekDone: number;
     weekTarget: number;
     heatmap: HeatCell[];
   };
-  synthesis: { weeklyVolumePercent: number; milestoneKg: number; weeksToMilestone: number };
+  /** weeklyVolumePercent / weeksToMilestone are null when there isn't enough data to compute them. */
+  synthesis: {
+    weeklyVolumePercent: number | null;
+    milestoneKg: number;
+    weeksToMilestone: number | null;
+  };
   personalRecords: { totalCount: number; items: PersonalRecord[] };
   transformation: {
     dayNumber: number;

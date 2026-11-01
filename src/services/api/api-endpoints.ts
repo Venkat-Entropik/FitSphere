@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
     history: '/workouts/history',
     categories: '/workouts/categories',
     active: '/workouts/active',
+    plans: '/workouts/plans',
   },
   exercises: { list: '/exercises', detail: (id: string) => `/exercises/${id}` },
   activities: { list: '/activities', detail: (id: string) => `/activities/${id}` },
@@ -31,5 +32,5 @@ export const API_ENDPOINTS = {
     messages: '/coach/messages',
     send: '/coach/messages',
   },
-  profile: { me: '/profile', preferences: '/profile/preferences' },
+  profile: { me: '/profile', preferences: '/profile/preferences', weights: '/profile/weights' },
 } as const;

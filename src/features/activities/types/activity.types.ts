@@ -60,3 +60,22 @@ export interface KindOption {
   /** Whether GPS route tracking applies to this kind. */
   usesGps: boolean;
 }
+
+/** A finished activity, as stored by the backend (route downsampled to keep storage small). */
+export interface ActivityRecord {
+  id: string;
+  kind: ActivityKind;
+  title: string;
+  startedAt: number;
+  endedAt: number;
+  distanceKm: number;
+  durationSec: number;
+  movingSec: number;
+  avgPaceSecPerKm: number | null;
+  kcal: number;
+  elevationGainM: number;
+  splits: Split[];
+  route: LatLng[];
+  /** Records created by the seeding routine rather than recorded by the user. */
+  source: 'user' | 'sample';
+}

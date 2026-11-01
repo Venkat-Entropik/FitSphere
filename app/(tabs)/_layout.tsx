@@ -1,10 +1,20 @@
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 
 import { AppHeader } from '@/components/ui/AppHeader';
+import { useHydrated } from '@/hooks/useHydrated';
 import { BottomTabBar } from '@/navigation/BottomTabBar';
+import { usePreferencesStore } from '@/store/preferences.store';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
+  const hydrated = useHydrated(usePreferencesStore);
+  const onboarded = usePreferencesStore((s) => s.onboardingComplete || s.onboardingSkipped);
+
+  // First launch: set up the profile before anything shows targets derived from it.
+  if (!hydrated) return null;
+  if (!onboarded) return <Redirect href="/onboarding" />;
+
   return (
     <Tabs
       tabBar={(props) => <BottomTabBar {...props} />}

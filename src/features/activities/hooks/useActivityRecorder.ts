@@ -1,14 +1,17 @@
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useProfile } from '@/features/profile/hooks/useProfile';
 import { useNow } from '@/hooks/useNow';
 import { elapsedSeconds, useActivityRecordingStore } from '@/store/activity-recording.store';
 
 import { areLocationServicesEnabled, watchPositions } from '../services/location.service';
 import { buildSnapshot, kindUsesGps, KIND_OPTIONS } from '../utils/activity.logic';
+import { isWorthSaving, toActivityRecord } from '../utils/activity-history.logic';
+import { useSaveActivity } from './useActivityHistory';
 
-/** Body weight and pace target are placeholders until the profile feature supplies them. */
-const DEFAULT_WEIGHT_KG = 70;
+/** Used until the profile loads; the pace target is a fixed default until goals include one. */
+const FALLBACK_WEIGHT_KG = 70;
 const DEFAULT_TARGET_PACE_SEC_PER_KM = 300;
 
 export type GpsAvailability =
@@ -16,6 +19,8 @@ export type GpsAvailability =
 
 export function useActivityRecorder() {
   const store = useActivityRecordingStore();
+  const profile = useProfile();
+  const save = useSaveActivity();
   const { status, kind, points, lapCount } = store;
   const [permission, requestPermission] = Location.useForegroundPermissions();
   const [servicesEnabled, setServicesEnabled] = useState<boolean | null>(null);
@@ -68,7 +73,7 @@ export function useActivityRecorder() {
         title: KIND_OPTIONS.find((o) => o.kind === kind)?.label ?? 'Activity',
         points,
         durationSec,
-        weightKg: DEFAULT_WEIGHT_KG,
+        weightKg: profile.data?.profile.weightKg ?? FALLBACK_WEIGHT_KG,
         targetPaceSecPerKm: usesGps ? DEFAULT_TARGET_PACE_SEC_PER_KM : null,
         lapCount,
       })
@@ -79,9 +84,26 @@ export function useActivityRecorder() {
     store.start();
   }, [store]);
 
+  /**
+   * Saves the activity to history, then clears the recording. If the save fails the recording is kept
+   * so nothing is lost; accidental starts (no distance, under 30 s) are discarded instead.
+   */
   const finish = useCallback(() => {
-    if (snapshot) store.finish(snapshot);
-  }, [snapshot, store]);
+    if (!snapshot || store.startedAt === null) return;
+    if (!isWorthSaving(snapshot)) {
+      store.discard();
+      return;
+    }
+    const endedAt = Date.now();
+    save.mutate(
+      toActivityRecord(snapshot, {
+        id: `activity-${endedAt}`,
+        startedAt: store.startedAt,
+        endedAt,
+      }),
+      { onSuccess: () => store.finish(snapshot) },
+    );
+  }, [snapshot, store, save]);
 
   return {
     status,
@@ -97,5 +119,7 @@ export function useActivityRecorder() {
     resume: () => store.resume(),
     markLap: store.markLap,
     finish,
+    saving: save.isPending,
+    saveError: save.error,
   };
 }

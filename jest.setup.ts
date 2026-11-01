@@ -1,3 +1,5 @@
+import { resetMockDb } from '@/services/mock-db/mock-db';
+
 process.env.EXPO_PUBLIC_API_URL = 'http://api.test.local';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -63,3 +65,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
 );
+
+// Every test starts from a fresh seeded mock database (the app's stand-in backend).
+beforeEach(() => resetMockDb());

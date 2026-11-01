@@ -21,7 +21,14 @@ export function weeklyFrequencyBars(days: readonly WeeklyFrequencyDay[]) {
   return days.map((d) => ({
     label: d.label,
     ratio: d.status === 'rest' || d.status === 'upcoming' ? 0 : d.minutes / longest,
-    topLabel: d.status === 'today' ? 'Now' : d.status === 'completed' ? `${d.minutes}m` : 'Rest',
+    topLabel:
+      d.status === 'today'
+        ? 'Now'
+        : d.status === 'completed'
+          ? `${d.minutes}m`
+          : d.status === 'rest'
+            ? 'Rest'
+            : undefined,
     variant:
       d.status === 'today'
         ? ('partial' as const)

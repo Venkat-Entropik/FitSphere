@@ -1,10 +1,10 @@
 import type { Badge, BodySnapshot, HeatCell } from '../types/progress.types';
 
-/** Share of the heat map's days that have a logged session. `days` is the window length. */
-export function adherencePercent(heatmap: readonly HeatCell[], days: number): number {
-  if (days <= 0) return 0;
-  const active = new Set(heatmap.map((c) => c.day)).size;
-  return Math.round(Math.min(1, active / days) * 100);
+/** Share of the heat map's days that have a logged session (rest cells don't count). */
+export function adherencePercent(heatmap: readonly HeatCell[]): number {
+  if (heatmap.length === 0) return 0;
+  const active = heatmap.filter((c) => c.kind !== 'rest').length;
+  return Math.round((active / heatmap.length) * 100);
 }
 
 export interface BodyDelta {
@@ -42,11 +42,14 @@ export function countUnlocked(badges: readonly Badge[]): number {
   return badges.filter((b) => b.status === 'earned').length;
 }
 
+/** Whole weeks to reach the target at the current weekly rate of change; null if moving the wrong way. */
 export function weeksToTarget(
   currentKg: number,
   targetKg: number,
-  weeklyGainKg: number,
+  weeklyChangeKg: number,
 ): number | null {
-  if (weeklyGainKg <= 0 || targetKg <= currentKg) return null;
-  return Math.ceil((targetKg - currentKg) / weeklyGainKg);
+  const remaining = round1(targetKg - currentKg);
+  if (remaining === 0) return 0;
+  if (weeklyChangeKg * remaining <= 0) return null;
+  return Math.ceil(remaining / weeklyChangeKg);
 }

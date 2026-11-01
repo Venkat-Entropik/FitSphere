@@ -41,7 +41,8 @@ export interface RecentLog {
   title: string;
   subtitle: string;
   kcal: number;
-  volumePercent: number;
+  /** Right-aligned lime caption, e.g. "9,420 kg" or "4'56\"/km". */
+  caption: string;
 }
 
 export interface AiInsight {

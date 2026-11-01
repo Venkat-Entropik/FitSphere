@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { toApiError } from '@/services/api/api-error';
+import { usePreferencesStore } from '@/store/preferences.store';
 import { useTheme } from '@/theme';
 
 import { AdaptationBanner } from '../components/AdaptationBanner';
@@ -45,6 +46,7 @@ function OnboardingForm({ draft }: { draft: OnboardingDraft }) {
   const router = useRouter();
   const theme = useTheme();
   const save = useSaveOnboarding();
+  const skipOnboarding = usePreferencesStore((s) => s.skipOnboarding);
   const {
     control,
     handleSubmit,
@@ -116,8 +118,13 @@ function OnboardingForm({ draft }: { draft: OnboardingDraft }) {
         <OnboardingHeader
           step={STEP}
           totalSteps={TOTAL_STEPS}
-          onBack={() => (router.canGoBack() ? router.back() : goHome())}
-          onSkip={goHome}
+          onBack={() => {
+            if (router.canGoBack()) router.back();
+          }}
+          onSkip={() => {
+            skipOnboarding();
+            goHome();
+          }}
         />
       </View>
 

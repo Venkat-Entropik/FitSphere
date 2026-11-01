@@ -9,6 +9,13 @@ import { useTheme } from '@/theme';
 import type { MealRecommendation } from '../types/nutrition.types';
 import { categoryMeta } from '../utils/nutrition.logic';
 
+const SHORT_LABEL = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  snack: 'Snack',
+  dinner: 'Dinner',
+} as const;
+
 export interface RecommendedMealCardProps {
   meal: MealRecommendation;
   onLog: () => void;
@@ -17,6 +24,7 @@ export interface RecommendedMealCardProps {
 
 export function RecommendedMealCard({ meal, onLog, busy = false }: RecommendedMealCardProps) {
   const theme = useTheme();
+  const shortLabel = SHORT_LABEL[meal.category];
   return (
     <Card style={{ gap: 8 }}>
       <View
@@ -42,7 +50,7 @@ export function RecommendedMealCard({ meal, onLog, busy = false }: RecommendedMe
           </View>
           <View style={{ flex: 1 }}>
             <AppText variant="labelCaps" color="primary" uppercase>
-              Recommended Dinner{' '}
+              Recommended {shortLabel}{' '}
               <AppText variant="labelCaps" color="onSurfaceVariant" weight="regular">
                 • Target: ~{meal.kcal} kcal
               </AppText>
@@ -80,7 +88,7 @@ export function RecommendedMealCard({ meal, onLog, busy = false }: RecommendedMe
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 }}>
         <View style={{ flex: 1 }}>
           <Button
-            label="Log Recommended Dinner"
+            label={`Log Recommended ${shortLabel}`}
             onPress={onLog}
             loading={busy}
             leftIcon={<Icon name="check_circle" size={18} color="onPrimary" />}

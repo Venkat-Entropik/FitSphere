@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+import { zustandAsyncStorage } from '@/services/storage/app-storage';
 
 import type {
   ActivityKind,
@@ -26,6 +29,8 @@ interface ActivityRecordingState {
   resume: (now?: number) => void;
   markLap: () => void;
   finish: (summary: ActivitySnapshot) => void;
+  /** Throws the in-progress recording away without saving it. */
+  discard: () => void;
 }
 
 /** Elapsed seconds excluding pauses. */
@@ -38,57 +43,95 @@ export function elapsedSeconds(
   return Math.max(0, (now - s.startedAt - s.pausedMs - currentPause) / 1000);
 }
 
-export const useActivityRecordingStore = create<ActivityRecordingState>()((set, get) => ({
-  status: 'idle',
-  kind: 'run',
-  startedAt: null,
-  pausedMs: 0,
-  pausedAt: null,
-  points: [],
-  lapCount: 0,
-  lastSummary: null,
-
-  setKind: (kind) => {
-    if (get().status === 'idle') set({ kind });
-  },
-
-  start: (now = Date.now()) =>
-    set({
-      status: 'recording',
-      startedAt: now,
-      pausedMs: 0,
-      pausedAt: null,
-      points: [],
-      lapCount: 0,
-    }),
-
-  addPoint: (point) => {
-    if (get().status === 'recording') set((s) => ({ points: [...s.points, point] }));
-  },
-
-  pause: (now = Date.now()) => {
-    if (get().status === 'recording') set({ status: 'paused', pausedAt: now });
-  },
-
-  resume: (now = Date.now()) => {
-    const { status, pausedAt, pausedMs } = get();
-    if (status === 'paused' && pausedAt !== null) {
-      set({ status: 'recording', pausedAt: null, pausedMs: pausedMs + (now - pausedAt) });
-    }
-  },
-
-  markLap: () => {
-    if (get().status === 'recording') set((s) => ({ lapCount: s.lapCount + 1 }));
-  },
-
-  finish: (summary) =>
-    set({
+export const useActivityRecordingStore = create<ActivityRecordingState>()(
+  persist(
+    (set, get) => ({
       status: 'idle',
+      kind: 'run',
       startedAt: null,
       pausedMs: 0,
       pausedAt: null,
       points: [],
       lapCount: 0,
-      lastSummary: summary,
+      lastSummary: null,
+
+      setKind: (kind) => {
+        if (get().status === 'idle') set({ kind });
+      },
+
+      start: (now = Date.now()) =>
+        set({
+          status: 'recording',
+          startedAt: now,
+          pausedMs: 0,
+          pausedAt: null,
+          points: [],
+          lapCount: 0,
+        }),
+
+      addPoint: (point) => {
+        if (get().status === 'recording') set((s) => ({ points: [...s.points, point] }));
+      },
+
+      pause: (now = Date.now()) => {
+        if (get().status === 'recording') set({ status: 'paused', pausedAt: now });
+      },
+
+      resume: (now = Date.now()) => {
+        const { status, pausedAt, pausedMs } = get();
+        if (status === 'paused' && pausedAt !== null) {
+          set({ status: 'recording', pausedAt: null, pausedMs: pausedMs + (now - pausedAt) });
+        }
+      },
+
+      markLap: () => {
+        if (get().status === 'recording') set((s) => ({ lapCount: s.lapCount + 1 }));
+      },
+
+      finish: (summary) =>
+        set({
+          status: 'idle',
+          startedAt: null,
+          pausedMs: 0,
+          pausedAt: null,
+          points: [],
+          lapCount: 0,
+          lastSummary: summary,
+        }),
+      discard: () =>
+        set({
+          status: 'idle',
+          startedAt: null,
+          pausedMs: 0,
+          pausedAt: null,
+          points: [],
+          lapCount: 0,
+        }),
     }),
-}));
+    {
+      // An in-progress recording survives an app kill; GPS watching resumes when it is reopened.
+      name: 'fitsphere.activity-recording',
+      storage: zustandAsyncStorage,
+      version: 1,
+      partialize: ({
+        status,
+        kind,
+        startedAt,
+        pausedMs,
+        pausedAt,
+        points,
+        lapCount,
+        lastSummary,
+      }) => ({
+        status,
+        kind,
+        startedAt,
+        pausedMs,
+        pausedAt,
+        points,
+        lapCount,
+        lastSummary,
+      }),
+    },
+  ),
+);
