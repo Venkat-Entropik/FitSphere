@@ -13,6 +13,12 @@ const schema = z.object({
   /** Comma-separated browser origins allowed to call the API (the Expo web dev server). */
   CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:8090'),
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  /** Server-side only. Without it the coach answers from built-in rules. Never sent to the app. */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  /** AI chat messages one user may send per hour. */
+  AI_CHAT_PER_HOUR: z.coerce.number().int().positive().default(20),
   LOGIN_WINDOW_SEC: z.coerce.number().int().positive().default(15 * 60),
 });
 

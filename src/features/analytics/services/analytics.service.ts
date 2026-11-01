@@ -1,7 +1,6 @@
 import { env } from '@/config/env';
 import { WORKOUT_PLANS } from '@/features/workouts/services/catalog.mock';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
+import { loadRawRecords } from '@/services/api/raw-records';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
 
 import type { AnalyticsOverview, AnalyticsRange } from '../types/analytics.types';
@@ -29,12 +28,10 @@ const mockRepository: AnalyticsRepository = {
 };
 
 const apiRepository: AnalyticsRepository = {
-  getOverview: async (range) =>
-    (
-      await apiClient.get<AnalyticsOverview>(API_ENDPOINTS.analytics.overview, {
-        params: { range },
-      })
-    ).data,
+  getOverview: async (range) => {
+    const { profile, workouts, activities, weights, plans } = await loadRawRecords();
+    return buildOverview({ range, now: Date.now(), profile, workouts, activities, weights, plans });
+  },
 };
 
 export const analyticsService: AnalyticsRepository = env.useMocks ? mockRepository : apiRepository;

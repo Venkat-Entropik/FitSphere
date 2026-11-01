@@ -47,10 +47,12 @@ const apiRepository: NutritionRepository = {
         params: { date: dateKey },
       })
     ).data,
-  logMeal: async (dateKey, input) =>
+  logMeal: async (dateKey, input, now = Date.now()) =>
     (
       await apiClient.post<NutritionDayRecord>(API_ENDPOINTS.nutrition.logFood, {
         date: dateKey,
+        id: `meal-${now}`,
+        loggedAt: now,
         ...input,
       })
     ).data,

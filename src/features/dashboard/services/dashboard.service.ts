@@ -1,7 +1,6 @@
 import { env } from '@/config/env';
 import { WORKOUT_PLANS } from '@/features/workouts/services/catalog.mock';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
+import { loadRawRecords } from '@/services/api/raw-records';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
 
 import type { DashboardSummary } from '../types/dashboard.types';
@@ -27,8 +26,10 @@ const mockRepository: DashboardRepository = {
 };
 
 const apiRepository: DashboardRepository = {
-  getSummary: async () =>
-    (await apiClient.get<DashboardSummary>(API_ENDPOINTS.dashboard.summary)).data,
+  getSummary: async () => {
+    const { profile, workouts, activities, plans } = await loadRawRecords();
+    return buildDashboard({ now: Date.now(), profile, workouts, activities, plans });
+  },
 };
 
 export const dashboardService: DashboardRepository = env.useMocks ? mockRepository : apiRepository;

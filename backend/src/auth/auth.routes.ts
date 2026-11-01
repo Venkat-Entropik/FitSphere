@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { z, type ZodError } from 'zod';
+import { z } from 'zod';
 
 import type { Config } from '../config.js';
+import { fail, validationFailure } from '../http.js';
 import type { AuthRepository, UserRow } from './auth.repository.js';
 import { hashPassword, verifyAgainstDecoy, verifyPassword } from './passwords.js';
 import { createLoginLimiter } from './rate-limit.js';
@@ -39,21 +40,6 @@ export interface PublicUser {
 
 const publicUser = (u: UserRow): PublicUser => ({ id: u.id, name: u.name, email: u.email });
 
-/** `{ message, code }` is the error shape the mobile app's ApiError reads. */
-function fail(reply: FastifyReply, status: number, code: string, message: string, extra: object = {}) {
-  return reply.status(status).send({ message, code, ...extra });
-}
-
-function validationFailure(reply: FastifyReply, error: ZodError) {
-  const fieldErrors: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const field = String(issue.path[0] ?? 'body');
-    fieldErrors[field] ??= issue.message;
-  }
-  const first = Object.values(fieldErrors)[0] ?? 'Invalid request';
-  return fail(reply, 400, 'validation_error', first, { fieldErrors });
-}
-
 declare module 'fastify' {
   interface FastifyRequest {
     userId?: string;
@@ -69,6 +55,8 @@ export interface AuthDeps {
   users: AuthRepository;
   tokens: TokenService;
   now?: () => number;
+  /** Called once after a new account is created (e.g. to give it a default profile). */
+  onUserCreated?: (user: UserRow) => void;
 }
 
 export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
@@ -124,6 +112,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     });
     if (!created) return fail(reply, 409, 'email_taken', 'An account with this email already exists.', { fieldErrors: { email: 'An account with this email already exists.' } });
 
+    deps.onUserCreated?.(created);
     return reply.status(201).send(await issueSession(created));
   });
 

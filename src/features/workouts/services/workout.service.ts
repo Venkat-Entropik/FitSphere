@@ -36,13 +36,15 @@ const mockRepository: WorkoutRepository = {
   },
 };
 
+/**
+ * Only the user's own history lives on the server. Exercises, plans and categories are reference data
+ * bundled with the app: the pure aggregators (dashboard, analytics, progress) need the plans synchronously.
+ */
 const apiRepository: WorkoutRepository = {
-  getCategories: async () =>
-    (await apiClient.get<WorkoutCategory[]>(API_ENDPOINTS.workouts.categories)).data,
-  getActiveSession: async () =>
-    (await apiClient.get<ActiveSessionTemplate>(API_ENDPOINTS.workouts.active)).data,
-  getExercises: async () => (await apiClient.get<Exercise[]>(API_ENDPOINTS.exercises.list)).data,
-  getPlans: async () => (await apiClient.get<WorkoutPlan[]>(API_ENDPOINTS.workouts.plans)).data,
+  getCategories: mockRepository.getCategories,
+  getActiveSession: mockRepository.getActiveSession,
+  getExercises: mockRepository.getExercises,
+  getPlans: mockRepository.getPlans,
   getHistory: async () =>
     (await apiClient.get<WorkoutRecord[]>(API_ENDPOINTS.workouts.history)).data,
   saveWorkout: async (record) =>

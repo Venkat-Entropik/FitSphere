@@ -8,6 +8,8 @@ export type { OnboardingProfile };
 /** The signed-in athlete: identity plus the body/goal profile captured in onboarding. */
 export interface UserProfile extends OnboardingDraft {
   updatedAt: number;
+  /** Set by the server once onboarding is saved. Absent on the on-device mock profile. */
+  onboardingComplete?: boolean;
 }
 
 export type ProfilePatch = Partial<OnboardingProfile>;

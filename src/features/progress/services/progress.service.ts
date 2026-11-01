@@ -1,6 +1,5 @@
 import { env } from '@/config/env';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
+import { loadRawRecords } from '@/services/api/raw-records';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
 
 import type { ProgressOverview } from '../types/progress.types';
@@ -26,8 +25,10 @@ const mockRepository: ProgressRepository = {
 };
 
 const apiRepository: ProgressRepository = {
-  getOverview: async () =>
-    (await apiClient.get<ProgressOverview>(API_ENDPOINTS.progress.overview)).data,
+  getOverview: async () => {
+    const { profile, workouts, activities, weights } = await loadRawRecords();
+    return buildProgress({ now: Date.now(), profile, workouts, activities, weights });
+  },
 };
 
 export const progressService: ProgressRepository = env.useMocks ? mockRepository : apiRepository;

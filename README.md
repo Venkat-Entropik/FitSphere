@@ -52,8 +52,18 @@ __tests__/      Jest tests
 ## Backend & authentication
 
 `backend/` is a TypeScript API (Fastify + Zod + Node's built-in SQLite) with its own `package.json`.
-So far it implements **sign-up, sign-in, token refresh, sign-out and `/auth/me`**; everything else the
-app shows is still served by the on-device sample backend (`EXPO_PUBLIC_USE_MOCKS=true`).
+It implements **auth** (sign-up, sign-in, token refresh, sign-out, `/auth/me`) and **per-user data**:
+profile and weights, workouts, activities, and nutrition (foods and water). Every data route requires the
+bearer token and is scoped to the token's user id; the server stores raw records and the app computes the
+dashboard, analytics and progress from them. With `EXPO_PUBLIC_USE_MOCKS=false` (the default) the app uses
+this backend end to end; `true` keeps the on-device sample backend for offline demos. To give a dev account
+sample history: `npm --prefix backend run seed:dev -- you@example.com`. **AI layer:** the coach (`/coach/*`) and insights (`/insights/dashboard`, `/insights/nutrition`) are backed by
+Gemini through a provider interface (`backend/src/ai`). Set `GEMINI_API_KEY` in `backend/.env` (server only);
+without it, or if the model fails, times out or returns something unusable, answers come from rule-based text
+built from the user's real data. Prompts contain only the signed-in user's anonymised numbers, user text is
+fenced as untrusted data, chat is limited to `AI_CHAT_PER_HOUR` messages per user, and every assistant
+message carries the not-medical-advice flag. The app's coach and dashboard screens are not yet wired to the
+insight endpoints.
 
 ```bash
 cp backend/.env.example backend/.env   # then set JWT_SECRET (see the file for a one-liner)
@@ -72,8 +82,8 @@ On a physical phone `localhost` is the phone itself: run the API with `HOST=0.0.
 - **App side:** tokens live in SecureStore (localStorage on web, for development only). A 401 triggers one
   shared refresh and a retry; if refresh is rejected the user is signed out and the route gate returns
   them to Sign in. Signed-out users can only reach `(auth)`; signed-in users only the app and onboarding.
-- **Not yet:** email verification, password reset, per-user data on the server (the mock backend is reset
-  when a different account signs in so users never see each other's sample data), social login.
+- **Not yet:** email verification, password reset, social login. In mock mode the sample database is reset
+  when a different account signs in; with the real backend each account's data lives on the server.
 - Node's `node:sqlite` is experimental and prints a warning; the SQL is plain ANSI, so moving to
   Postgres is mechanical.
 

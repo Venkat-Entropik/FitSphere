@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { env } from '@/config/env';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -55,8 +56,12 @@ export function SecurityCard({ units, reminder, onExport, onOpenSettings }: Secu
       />
       <SettingRow
         icon="lock"
-        title="On-Device Storage"
-        subtitle="Your data is stored on this device only"
+        title={env.useMocks ? 'On-Device Storage' : 'Account Storage'}
+        subtitle={
+          env.useMocks
+            ? 'Your data is stored on this device only'
+            : 'Your data is saved to your FitSphere account'
+        }
       />
       <SettingRow
         icon="notifications_active"

@@ -87,8 +87,15 @@ const apiRepository: ProfileRepository = {
   updateProfile: async (patch) =>
     (await apiClient.patch<UserProfile>(API_ENDPOINTS.profile.me, patch)).data,
   getWeights: async () => (await apiClient.get<WeightEntry[]>(API_ENDPOINTS.profile.weights)).data,
-  logWeight: async (input) =>
-    (await apiClient.post<WeightEntry[]>(API_ENDPOINTS.profile.weights, input)).data,
+  // The id and day come from the client so a retried request replaces the entry instead of duplicating it.
+  logWeight: async (input, now = Date.now()) =>
+    (
+      await apiClient.post<WeightEntry[]>(API_ENDPOINTS.profile.weights, {
+        id: `weight-${now}`,
+        dateKey: dateKey(now),
+        ...input,
+      })
+    ).data,
 };
 
 export const profileService: ProfileRepository = env.useMocks ? mockRepository : apiRepository;
