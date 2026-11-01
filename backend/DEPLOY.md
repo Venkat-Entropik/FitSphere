@@ -21,13 +21,15 @@ wipes all accounts and data.
 
 Service → **Variables**:
 
-| Variable | Value |
-|---|---|
-| `JWT_SECRET` | Required. A long random string: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
-| `TRUST_PROXY` | `true`. Required on Railway, otherwise every user shares one IP for rate limits and lockouts. |
-| `CORS_ORIGINS` | Only if you serve the app on the web: your web origin, e.g. `https://app.example.com`. Native apps ignore CORS. |
-| `GEMINI_API_KEY` | Optional. Without it the coach uses built-in rule-based answers. Never put this in the app. |
-| `GEMINI_MODEL` | Optional. Default `gemini-3.8-flash`. |
+| Variable         | Value                                                                                                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`     | Required. A long random string: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`                                                           |
+| `TRUST_PROXY`    | `true`. Required on Railway, otherwise every user shares one IP for rate limits and lockouts.                                                                              |
+| `CORS_ORIGINS`   | Only if you serve the app on the web: your web origin, e.g. `https://app.example.com`. Native apps ignore CORS.                                                            |
+| `RESEND_API_KEY` | Needed for password reset emails. Create a key at resend.com and verify a sending domain. Without it, no email is sent (reset codes only print to the log in development). |
+| `MAIL_FROM`      | The sender, e.g. `FitSphere <no-reply@yourdomain.com>`. Must be on a domain verified in Resend.                                                                            |
+| `GEMINI_API_KEY` | Optional. Without it the coach uses built-in rule-based answers. Never put this in the app.                                                                                |
+| `GEMINI_MODEL`   | Optional. Default `gemini-3.8-flash`.                                                                                                                                      |
 
 Do not set `PORT`, `HOST` or `DATABASE_PATH`; the platform and Dockerfile handle them.
 Railway keeps **replicas at 1** by default. Do not scale it up (rate limits are in memory and SQLite is a single file).
@@ -57,7 +59,7 @@ iOS requires HTTPS, which Railway provides. These values are bundled into the ap
 
 - **Back up the volume.** Use Railway's volume backups if your plan has them, or copy `/data/fitsphere.db`
   on a schedule.
-- **Account deletion and password reset** do not exist yet. App stores require in-app account deletion.
+- **Test the reset email** once with your real `RESEND_API_KEY`: use Forgot password in the app and check that the code arrives (and isn't in spam).
 - **Postgres.** If you need more than one instance, move to Postgres (the SQL is plain ANSI) and a shared
   rate-limit store.
 - **Logs.** View them in Railway. They show method, path, status and errors only; request bodies, headers,

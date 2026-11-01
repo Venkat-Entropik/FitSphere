@@ -12,6 +12,7 @@ import { usePreferencesStore } from '@/store/preferences.store';
 const mockNavigate = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }),
+  useLocalSearchParams: () => ({}),
 }));
 
 const session = {
@@ -169,13 +170,11 @@ describe('RegisterScreen', () => {
   });
 
   it("puts the server's duplicate-email error on the email field", async () => {
-    jest
-      .spyOn(authService, 'register')
-      .mockRejectedValue(
-        new ApiError('An account with this email already exists.', 'validation', 409, {
-          email: 'An account with this email already exists.',
-        }),
-      );
+    jest.spyOn(authService, 'register').mockRejectedValue(
+      new ApiError('An account with this email already exists.', 'validation', 409, {
+        email: 'An account with this email already exists.',
+      }),
+    );
     await renderWith(<RegisterScreen />);
     await fill({});
     await fireEvent.press(screen.getByRole('button', { name: 'Create account' }));

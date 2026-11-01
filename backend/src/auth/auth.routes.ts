@@ -8,25 +8,13 @@ import { fail, validationFailure } from '../http.js';
 import type { AuthRepository, UserRow } from './auth.repository.js';
 import { hashPassword, verifyAgainstDecoy, verifyPassword } from './passwords.js';
 import { createLoginLimiter } from './rate-limit.js';
+import { email, newPassword } from './schemas.js';
 import { hashRefreshToken, newRefreshToken, type TokenService } from './tokens.js';
-
-const email = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(1, 'Email is required')
-  .max(254, 'Email is too long')
-  .pipe(z.email('Enter a valid email address'));
 
 const registerBody = z.object({
   name: z.string().trim().min(2, 'Enter your name').max(60, 'Keep your name under 60 characters'),
   email,
-  password: z
-    .string()
-    .min(8, 'Use at least 8 characters')
-    .max(128, 'Use at most 128 characters')
-    .regex(/[A-Za-z]/, 'Include at least one letter')
-    .regex(/\d/, 'Include at least one number'),
+  password: newPassword,
 });
 
 const loginBody = z.object({ email, password: z.string().min(1, 'Password is required').max(128) });

@@ -20,3 +20,14 @@ export function useRegister() {
     onSuccess: (session) => startSession(session, queryClient),
   });
 }
+
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (email: string) => authService.forgotPassword(email) });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (input: { email: string; code: string; password: string }) =>
+      authService.resetPassword(input),
+  });
+}

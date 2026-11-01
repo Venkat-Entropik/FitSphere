@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, type ComponentRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import type { TextInput } from 'react-native';
@@ -21,6 +21,7 @@ const FIELDS = ['email', 'password'] as const;
 
 export function LoginScreen() {
   const router = useRouter();
+  const { reset: justReset } = useLocalSearchParams<{ reset?: string }>();
   const login = useLogin();
   const startDemo = useDemoSession();
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -74,6 +75,11 @@ export function LoginScreen() {
         </>
       }
     >
+      {justReset === '1' ? (
+        <AppText variant="bodySm" color="primary" accessibilityRole="alert">
+          Password updated. Sign in with your new password.
+        </AppText>
+      ) : null}
       {failure?.banner ? <ErrorBanner message={failure.banner} /> : null}
       <Controller
         control={control}
@@ -114,6 +120,11 @@ export function LoginScreen() {
             error={errors.password?.message}
           />
         )}
+      />
+      <AuthLink
+        prompt="Trouble signing in?"
+        action="Forgot password"
+        onPress={() => router.navigate('/forgot-password')}
       />
       <PrimaryButton
         size="lg"

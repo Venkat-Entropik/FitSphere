@@ -31,6 +31,9 @@ import { useExportTelemetry } from '../hooks/useExportTelemetry';
 import { useNutritionTargets, useProfile, useUpdateProfile, useWeights } from '../hooks/useProfile';
 import { useReminderSetting } from '../hooks/useReminderSetting';
 import { useResetDemoData } from '../hooks/useResetDemoData';
+import { DeleteAccountSheet } from '@/features/authentication/components/DeleteAccountSheet';
+import { DEMO_USER_ID } from '@/features/authentication/hooks/useDemoSession';
+import { useAuthStore } from '@/store/auth.store';
 import { sampleMembership, sampleSensors } from '../services/sample-account.mock';
 import { ProfileValidationError } from '../services/profile.service';
 import type { ProfilePatch } from '../types/profile.types';
@@ -42,7 +45,7 @@ import {
   proteinNote,
 } from '../utils/profile.stats';
 
-type Confirm = 'logout' | 'reset' | null;
+type Confirm = 'logout' | 'reset' | 'delete' | null;
 
 export function ProfileScreen() {
   const profile = useProfile();
@@ -55,6 +58,7 @@ export function ProfileScreen() {
   const reminder = useReminderSetting();
   const logout = useLogout();
   const resetDemo = useResetDemoData();
+  const user = useAuthStore((s) => s.user);
   const exportTelemetry = useExportTelemetry();
   const autoOverload = usePreferencesStore((s) => s.autoProgressiveOverload);
   const setAutoOverload = usePreferencesStore((s) => s.setAutoProgressiveOverload);
@@ -164,6 +168,14 @@ export function ProfileScreen() {
           onPress={() => setConfirm('logout')}
           leftIcon={<Icon name="logout" size={18} color="error" />}
         />
+        {user && user.id !== DEMO_USER_ID ? (
+          <SecondaryButton
+            label="Delete account"
+            onPress={() => setConfirm('delete')}
+            size="md"
+            leftIcon={<Icon name="delete_forever" size={18} color="error" />}
+          />
+        ) : null}
         <AppText
           variant="labelCaps"
           color="onSurfaceVariant"
@@ -178,6 +190,7 @@ export function ProfileScreen() {
         <EditProfileSheet visible profile={p} onClose={() => setEditing(false)} onSave={save} />
       ) : null}
 
+      <DeleteAccountSheet visible={confirm === 'delete'} onClose={() => setConfirm(null)} />
       <ConfirmationModal
         visible={confirm === 'logout'}
         title="Sign out?"

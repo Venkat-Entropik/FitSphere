@@ -22,6 +22,10 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  /** Sends password-reset emails through Resend (https://resend.com). Without it no email is sent. */
+  RESEND_API_KEY: z.string().optional(),
+  /** The From address, e.g. "FitSphere <no-reply@yourdomain.com>". Must be a domain verified in Resend. */
+  MAIL_FROM: z.string().optional(),
   /** AI chat messages one user may send per hour. */
   AI_CHAT_PER_HOUR: z.coerce.number().int().positive().default(20),
   LOGIN_WINDOW_SEC: z.coerce.number().int().positive().default(15 * 60),

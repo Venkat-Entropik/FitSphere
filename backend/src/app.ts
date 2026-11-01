@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { DatabaseSync } from 'node:sqlite';
 import type { z } from 'zod';
 
+import { registerAccountRoutes } from './auth/account.routes.js';
 import { createAuthRepository } from './auth/auth.repository.js';
 import { registerAuthRoutes } from './auth/auth.routes.js';
 import { createAiService } from './ai/ai.service.js';
@@ -18,6 +19,7 @@ import { createActivityRepository, createWorkoutRepository } from './data/record
 import { registerRecordRoutes } from './data/records.routes.js';
 import { createTokenService } from './auth/tokens.js';
 import type { Config } from './config.js';
+import { createFallbackMailer, createResendMailer, type Mailer } from './mail/mailer.js';
 import type { activityBody, workoutBody } from './data/schemas.js';
 
 type WorkoutRecord = z.infer<typeof workoutBody>;
@@ -29,9 +31,11 @@ export interface AppOptions {
   now?: () => number;
   /** Overrides the model provider (tests pass a fake; `null` forces rule-based answers). */
   ai?: AiProvider | null;
+  /** Overrides the email sender (tests pass a fake). */
+  mailer?: Mailer;
 }
 
-export async function buildApp({ config, db, now, ai }: AppOptions): Promise<FastifyInstance> {
+export async function buildApp({ config, db, now, ai, mailer }: AppOptions): Promise<FastifyInstance> {
   // Bodies are small by design (routes are downsampled to ≤200 points), so cap them well below Fastify's 1 MB.
   const app = Fastify({
     // Request logs carry method, path and status only: never bodies, headers or tokens. Silent in tests.
@@ -56,6 +60,20 @@ export async function buildApp({ config, db, now, ai }: AppOptions): Promise<Fas
     tokens: createTokenService(config.JWT_SECRET, config.ACCESS_TOKEN_TTL_SEC),
     now,
     onUserCreated: (user) => profiles.ensure(user.id, clock()),
+  });
+
+  const sender =
+    mailer ??
+    (config.RESEND_API_KEY && config.MAIL_FROM
+      ? createResendMailer({ apiKey: config.RESEND_API_KEY, from: config.MAIL_FROM })
+      : createFallbackMailer({ development: config.NODE_ENV === 'development', log: (line) => app.log.warn(line) }));
+  registerAccountRoutes(app, {
+    config,
+    users: createAuthRepository(db),
+    mailer: sender,
+    now,
+    // Only the error class is logged: provider errors and messages can contain the address or code.
+    onMailError: (error) => app.log.warn({ err: error instanceof Error ? error.name : 'unknown' }, 'email send failed'),
   });
 
   // Every data route authenticates and scopes by the token's user id; no route accepts one from the client.

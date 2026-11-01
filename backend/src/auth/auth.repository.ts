@@ -87,6 +87,37 @@ export function createAuthRepository(db: DatabaseSync) {
       db.prepare('UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, userId);
     },
 
+    /** Cascades to every table that references the user: profile, workouts, meals, coach chat, tokens. */
+    deleteUser(userId: string): void {
+      db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    },
+
+    setPassword(userId: string, passwordHash: string): void {
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+    },
+
+    /** One active reset code per user; asking again replaces it and resets the attempt counter. */
+    putResetCode(reset: { userId: string; codeHash: string; expiresAt: number; now: number }): void {
+      db.prepare(
+        `INSERT INTO password_resets (user_id, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)
+         ON CONFLICT (user_id) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at,
+           attempts = 0, created_at = excluded.created_at`,
+      ).run(reset.userId, reset.codeHash, reset.expiresAt, reset.now);
+    },
+
+    findResetCode: (userId: string) =>
+      db.prepare('SELECT code_hash, expires_at, attempts FROM password_resets WHERE user_id = ?').get(userId) as
+        | { code_hash: string; expires_at: number; attempts: number }
+        | undefined,
+
+    addResetAttempt(userId: string): void {
+      db.prepare('UPDATE password_resets SET attempts = attempts + 1 WHERE user_id = ?').run(userId);
+    },
+
+    deleteResetCode(userId: string): void {
+      db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(userId);
+    },
+
     pruneExpired(now: number): void {
       db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ?').run(now);
     },
