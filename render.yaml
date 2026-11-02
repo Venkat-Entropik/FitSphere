@@ -7,7 +7,7 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    region: oregon
+    region: singapore
     # Free services sleep after ~15 minutes without traffic; the first request afterwards takes about a minute.
     plan: free
     healthCheckPath: /health
