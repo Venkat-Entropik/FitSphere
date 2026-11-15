@@ -517,7 +517,7 @@ describe('migrations', () => {
 
     const second = await openDatabase({ path }); // runs the migration check again
     assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM users'))!.n, 1);
-    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 6);
+    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 7);
     // Timestamps are far beyond 32 bits and come back as plain numbers.
     assert.equal((await second.get<{ created_at: number }>('SELECT created_at FROM users'))!.created_at, 1_793_542_000_000);
     await second.close();

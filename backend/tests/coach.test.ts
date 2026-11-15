@@ -399,3 +399,84 @@ describe('Gemini adapter', () => {
     );
   });
 });
+
+describe('daily coach limit and plans', () => {
+  const ADMIN = 'admin-token-admin-token-1234567890';
+  const send = (h: Harness, token: string, text: string) => call(h, token, 'POST', '/coach/messages', { text });
+
+  it('lets a free user send the daily allowance, then refuses with an upgrade message', async () => {
+    const h = await setup(null, { COACH_FREE_PER_DAY: '2', AI_CHAT_PER_HOUR: '50' });
+    const { token } = await signUp(h, 'free@example.com');
+    assert.equal((await send(h, token, 'one')).statusCode, 201);
+    assert.equal((await call(h, token, 'GET', '/coach/usage')).json().remaining, 1);
+    assert.equal((await send(h, token, 'two')).statusCode, 201);
+    const blocked = await send(h, token, 'three');
+    assert.equal(blocked.statusCode, 429);
+    assert.equal(blocked.json().code, 'daily_limit');
+    assert.equal(blocked.json().plan, 'free');
+    const usage = (await call(h, token, 'GET', '/coach/usage')).json();
+    assert.deepEqual([usage.plan, usage.limit, usage.used, usage.remaining], ['free', 2, 2, 0]);
+  });
+
+  it('resets on the next UTC day', async () => {
+    const h = await setup(null, { COACH_FREE_PER_DAY: '1', AI_CHAT_PER_HOUR: '50' });
+    const { token } = await signUp(h, 'reset@example.com');
+    assert.equal((await send(h, token, 'a')).statusCode, 201);
+    assert.equal((await send(h, token, 'b')).statusCode, 429);
+    h.clock.now += 86_400_000;
+    assert.equal((await send(h, token, 'c')).statusCode, 201);
+  });
+
+  it('a retried message id is not charged twice', async () => {
+    const h = await setup(null, { COACH_FREE_PER_DAY: '1', AI_CHAT_PER_HOUR: '50' });
+    const { token } = await signUp(h, 'retry@example.com');
+    const payload = { text: 'same', id: 'client-msg-1' };
+    assert.equal((await call(h, token, 'POST', '/coach/messages', payload)).statusCode, 201);
+    assert.equal((await call(h, token, 'POST', '/coach/messages', payload)).statusCode, 200);
+  });
+
+  it('parallel sends cannot overshoot the limit', async () => {
+    const h = await setup(null, { COACH_FREE_PER_DAY: '3', AI_CHAT_PER_HOUR: '50' });
+    const { token } = await signUp(h, 'race@example.com');
+    const results = await Promise.all(Array.from({ length: 8 }, (_, i) => send(h, token, `q${i}`)));
+    assert.equal(results.filter((r) => r.statusCode === 201).length, 3);
+  });
+
+  it('Pro raises the limit, and an expired Pro falls back to free', async () => {
+    const h = await setup(null, {
+      COACH_FREE_PER_DAY: '1',
+      COACH_PRO_PER_DAY: '3',
+      AI_CHAT_PER_HOUR: '50',
+      ADMIN_TOKEN: ADMIN,
+    });
+    const { token } = await signUp(h, 'pro@example.com');
+    const setPlan = (payload: object, adminToken = ADMIN) =>
+      h.app.inject({ method: 'POST', url: '/admin/plan', payload, headers: { 'x-admin-token': adminToken } });
+
+    assert.equal((await setPlan({ email: 'pro@example.com', plan: 'pro' })).statusCode, 200);
+    const usage = (await call(h, token, 'GET', '/coach/usage')).json();
+    assert.deepEqual([usage.plan, usage.limit], ['pro', 3]);
+
+    await setPlan({ email: 'pro@example.com', plan: 'pro', expiresAt: NOW + 1000 });
+    h.clock.now += 5000;
+    assert.equal((await call(h, token, 'GET', '/coach/usage')).json().plan, 'free');
+  });
+
+  it('the admin endpoint rejects a wrong token, unknown accounts, and does not exist without a token', async () => {
+    const h = await setup(null, { ADMIN_TOKEN: ADMIN });
+    await signUp(h, 'someone@example.com');
+    const post = (payload: object, token: string) =>
+      h.app.inject({ method: 'POST', url: '/admin/plan', payload, headers: { 'x-admin-token': token } });
+    assert.equal((await post({ email: 'someone@example.com', plan: 'pro' }, 'wrong-token')).statusCode, 401);
+    assert.equal((await post({ email: 'nobody@example.com', plan: 'pro' }, ADMIN)).statusCode, 404);
+
+    const off = await setup(null);
+    const res = await off.app.inject({ method: 'POST', url: '/admin/plan', payload: { email: 'x@example.com', plan: 'pro' }, headers: { 'x-admin-token': ADMIN } });
+    assert.equal(res.statusCode, 404);
+  });
+
+  it('requires sign-in for /coach/usage', async () => {
+    const h = await setup(null);
+    assert.equal((await call(h, null, 'GET', '/coach/usage')).statusCode, 401);
+  });
+});

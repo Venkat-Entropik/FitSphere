@@ -8,7 +8,9 @@ import { createAuthRepository } from './auth/auth.repository.js';
 import { registerAuthRoutes } from './auth/auth.routes.js';
 import { createAiService } from './ai/ai.service.js';
 import { createCoachRepository } from './ai/coach.repository.js';
+import { registerAdminRoutes } from './ai/admin.routes.js';
 import { registerCoachRoutes } from './ai/coach.routes.js';
+import { createPlanRepository } from './ai/plan.repository.js';
 import { createGeminiProvider } from './ai/gemini.provider.js';
 import type { AiProvider } from './ai/provider.js';
 import { createCustomExerciseStore, createRoutineStore } from './data/library.repository.js';
@@ -154,8 +156,11 @@ export async function buildApp({
             timeoutMs: config.AI_TIMEOUT_MS,
           })
         : null;
+  const plans = createPlanRepository(db);
+  registerAdminRoutes(app, { token: config.ADMIN_TOKEN, plans });
   registerCoachRoutes(app, {
     config,
+    plans,
     // Log only that a call failed, never prompts, replies or request bodies.
     ai: createAiService(provider, (error) =>
       app.log.warn(

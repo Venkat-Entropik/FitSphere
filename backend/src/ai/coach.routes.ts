@@ -8,6 +8,7 @@ import type { Config } from '../config.js';
 import { fail, validationFailure } from '../http.js';
 import type { AiService } from './ai.service.js';
 import type { CoachRepository } from './coach.repository.js';
+import type { PlanRepository } from './plan.repository.js';
 import { buildCoachContext, dayKey, type CoachContext, type ContextSources } from './context.js';
 import { dashboardInsight, nutritionTip, overviewSummary, ruleReply } from './fallback.js';
 import {
@@ -61,13 +62,14 @@ export interface CoachDeps {
   config: Config;
   ai: AiService;
   coach: CoachRepository;
+  plans: PlanRepository;
   sources: ContextSources;
   now: () => number;
   onProviderError?: (error: unknown) => void;
 }
 
 export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void {
-  const { ai, coach, sources, now, config } = deps;
+  const { ai, coach, plans, sources, now, config } = deps;
   const auth = { preHandler: app.authenticate };
   const chatLimiter = createLoginLimiter(config.AI_CHAT_PER_HOUR, 3600);
   const insightLimiter = createLoginLimiter(INSIGHT_GENERATIONS_PER_HOUR, 3600);
@@ -104,14 +106,30 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
     return { ...fresh, createdAt: at };
   }
 
+  const dailyLimit = (plan: 'free' | 'pro') =>
+    plan === 'pro' ? config.COACH_PRO_PER_DAY : config.COACH_FREE_PER_DAY;
+  const nextMidnightUtc = (at: number) => Date.parse(`${dayKey(at)}T00:00:00Z`) + 86_400_000;
+
+  /** The plan and what is left of today's coach messages. The app only displays this; the server enforces it. */
+  async function usageFor(userId: string) {
+    const at = now();
+    const plan = await plans.planOf(userId, at);
+    const limit = dailyLimit(plan);
+    const used = Math.min(limit, await plans.used(userId, dayKey(at)));
+    return { plan, limit, used, remaining: limit - used, resetsAt: nextMidnightUtc(at) };
+  }
+
+  app.get('/coach/usage', auth, async (request) => usageFor(request.userId!));
+
   app.get('/coach/messages', auth, async (request) => coach.list(request.userId!));
 
   app.post('/coach/messages', auth, async (request, reply) => {
     const parsed = sendBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
     const userId = request.userId!;
+    const input = parsed.data;
 
-    const userMessageId = parsed.data.id ?? randomUUID();
+    const userMessageId = input.id ?? randomUUID();
     // A retried request returns the stored answer instead of spending another model call.
     const existing = await coach.replyFor(userId, userMessageId);
     if (existing) return reply.status(200).send(existing);
@@ -129,32 +147,54 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
         `You have reached the coach message limit. Try again in ${Math.ceil(blocked / 60)} min.`,
       );
     }
+    const plan = await plans.planOf(userId, at);
+    const day = dayKey(at);
+    if (!(await plans.consume(userId, day, dailyLimit(plan)))) {
+      return fail(
+        reply,
+        429,
+        'daily_limit',
+        plan === 'pro'
+          ? "You have used all of today's coach messages. They reset at midnight UTC."
+          : 'You have used your free coach messages for today. Upgrade to Pro for more, or come back tomorrow.',
+        { plan, limit: dailyLimit(plan), resetsAt: nextMidnightUtc(at) },
+      );
+    }
     chatLimiter.recordFailure(userId, at); // counts every message
 
-    const c = await context(userId);
-    const history = (await coach.list(userId, 8)).map((m) => ({
-      role: m.role,
-      text: m.text.slice(0, MAX_HISTORY_TURN_CHARS),
-    }));
+    try {
+      return await answerAndStore();
+    } catch (error) {
+      await plans.refund(userId, day); // nothing was stored, so don't charge the message
+      throw error;
+    }
 
-    const answer = (await ai.chat(c, history, parsed.data.text)) ?? ruleReply(parsed.data.text, c);
+    async function answerAndStore() {
+      const c = await context(userId);
+      const history = (await coach.list(userId, 8)).map((m) => ({
+        role: m.role,
+        text: m.text.slice(0, MAX_HISTORY_TURN_CHARS),
+      }));
 
-    const user = {
-      id: userMessageId,
-      role: 'user' as const,
-      text: parsed.data.text,
-      createdAt: at,
-    };
-    const assistant = {
-      id: `assistant-${randomUUID()}`,
-      role: 'assistant' as const,
-      text: answer.text,
-      createdAt: now(),
-      ...(answer.plan && { plan: answer.plan }),
-      showDisclaimer: true,
-    };
-    await coach.saveExchange(userId, user, assistant);
-    return reply.status(201).send(assistant);
+      const answer = (await ai.chat(c, history, input.text)) ?? ruleReply(input.text, c);
+
+      const user = {
+        id: userMessageId,
+        role: 'user' as const,
+        text: input.text,
+        createdAt: at,
+      };
+      const assistant = {
+        id: `assistant-${randomUUID()}`,
+        role: 'assistant' as const,
+        text: answer.text,
+        createdAt: now(),
+        ...(answer.plan && { plan: answer.plan }),
+        showDisclaimer: true,
+      };
+      await coach.saveExchange(userId, user, assistant);
+      return reply.status(201).send(assistant);
+    }
   });
 
   app.get('/coach/suggestions', auth, async () => SUGGESTIONS);

@@ -324,6 +324,21 @@ const MIGRATIONS: { id: number; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 7,
+    sql: `
+      -- Subscription plan per account ('free' or 'pro'; pro may expire) and the coach's daily usage.
+      ALTER TABLE users ADD COLUMN plan TEXT NOT NULL DEFAULT 'free';
+      ALTER TABLE users ADD COLUMN plan_expires_at BIGINT;
+
+      CREATE TABLE coach_usage (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day     TEXT NOT NULL,
+        count   INTEGER NOT NULL,
+        PRIMARY KEY (user_id, day)
+      );
+    `,
+  },
 ];
 
 const MIGRATION_LOCK = 727_274;

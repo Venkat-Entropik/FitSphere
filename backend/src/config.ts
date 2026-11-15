@@ -37,6 +37,11 @@ const schema = z.object({
   MAIL_FROM: z.string().optional(),
   /** AI chat messages one user may send per hour. */
   AI_CHAT_PER_HOUR: z.coerce.number().int().positive().default(20),
+  /** Coach messages per day (UTC) on the free plan and on Pro. */
+  COACH_FREE_PER_DAY: z.coerce.number().int().positive().default(10),
+  COACH_PRO_PER_DAY: z.coerce.number().int().positive().default(100),
+  /** Lets an operator set a plan (POST /admin/plan). Unset = the endpoint does not exist. Min 24 chars. */
+  ADMIN_TOKEN: z.string().min(24).optional(),
   LOGIN_WINDOW_SEC: z.coerce
     .number()
     .int()
