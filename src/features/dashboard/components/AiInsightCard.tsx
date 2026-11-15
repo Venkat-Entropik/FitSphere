@@ -30,7 +30,7 @@ export function AiInsightCard({ insight, onViewSession }: AiInsightCardProps) {
         >
           <Icon name="auto_awesome" size={14} color="tertiary" />
           <AppText variant="labelCaps" color="tertiary" uppercase>
-            AI Coach Insight
+            Coach Insight
           </AppText>
         </View>
         <AppText variant="labelCaps" color="onSurfaceVariant">

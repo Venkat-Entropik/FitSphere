@@ -6,6 +6,7 @@ import { invalidateAfter } from '@/services/api/invalidation';
 import { useActiveWorkoutStore } from '@/store/active-workout.store';
 
 import { workoutService } from '../services/workout.service';
+import type { Exercise, Routine } from '../types/workout-record.types';
 import {
   buildWorkoutRecord,
   filterExercises,
@@ -20,6 +21,7 @@ export const workoutKeys = {
   exercises: ['workouts', 'exercises'] as const,
   plans: ['workouts', 'plans'] as const,
   history: ['workouts', 'history'] as const,
+  routines: ['workouts', 'routines'] as const,
 };
 
 export function useWorkoutCategories() {
@@ -76,14 +78,51 @@ export function usePersonalBests() {
   return { ...history, bests };
 }
 
-/** The plan that follows the one trained last. */
+/** The built-in plan that follows the one trained last. The rotation skips the user's own routines. */
 export function useNextPlan() {
   const plans = useWorkoutPlans();
   const history = useWorkoutHistory();
-  return useMemo(
-    () => (plans.data && history.data ? nextPlan(history.data, plans.data) : undefined),
-    [plans.data, history.data],
-  );
+  return useMemo(() => {
+    if (!plans.data || !history.data) return undefined;
+    const builtIn = plans.data.filter((p) => p.categoryId !== 'custom');
+    return builtIn.length ? nextPlan(history.data, builtIn) : undefined;
+  }, [plans.data, history.data]);
+}
+
+export function useRoutines() {
+  return useQuery({ queryKey: workoutKeys.routines, queryFn: () => workoutService.getRoutines() });
+}
+
+export function useSaveRoutine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (routine: Routine) => workoutService.saveRoutine(routine),
+    onSuccess: () => invalidateAfter(queryClient, 'routine'),
+  });
+}
+
+export function useDeleteRoutine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => workoutService.deleteRoutine(id),
+    onSuccess: () => invalidateAfter(queryClient, 'routine'),
+  });
+}
+
+export function useDeleteCustomExercise() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => workoutService.deleteCustomExercise(id),
+    onSuccess: () => invalidateAfter(queryClient, 'routine'),
+  });
+}
+
+export function useSaveCustomExercise() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (exercise: Exercise) => workoutService.saveCustomExercise(exercise),
+    onSuccess: () => invalidateAfter(queryClient, 'routine'),
+  });
 }
 
 /** Saves the finished workout, clears the live session, and refreshes everything derived from it. */

@@ -148,3 +148,16 @@ Known, intentional deviations from the reference:
 - `react-test-renderer` is pinned to 19.3.0 to match React.
 - iOS Simulator verification needs full Xcode; Phase 1 was verified via typecheck, lint, tests,
   `expo export` for iOS + Android, and a live Metro bundle.
+
+## Releasing
+
+1. **Deploy the backend first** (Render). The app update uses new routes (`/routines`, `/exercises/custom`,
+   `/nutrition/range`, `/foods/search`); an old backend would reject them.
+2. Set `EXPO_PUBLIC_API_URL` (your Render URL) and optionally `EXPO_PUBLIC_SUPPORT_EMAIL` in the build environment.
+3. Android test build (installable APK): `npx eas-cli@latest build --profile preview --platform android`
+4. Store builds: `npx eas-cli@latest build --profile production --platform all`, then `eas submit`.
+   First run needs `npx eas-cli@latest init` and an Expo account; iOS needs an Apple Developer account.
+5. Store listings need a privacy policy URL: `https://<your web host>/privacy`.
+
+The legal text in `src/features/legal/legal.content.ts` is a draft; have it reviewed before publishing.
+Food data comes from Open Food Facts (ODbL); the attribution is shown in the app.

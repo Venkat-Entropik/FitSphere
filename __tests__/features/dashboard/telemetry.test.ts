@@ -1,6 +1,5 @@
 import {
   countCompleted,
-  formatSleep,
   telemetryRings,
   weeklyFrequencyBars,
 } from '@/features/dashboard/utils/telemetry';
@@ -11,8 +10,6 @@ import type {
 import { formatDayLabel, getGreeting } from '@/utils/date';
 
 const telemetry: DailyTelemetry = {
-  steps: 8420,
-  stepsGoal: 10000,
   activeBurnKcal: 420,
   activeBurnGoalKcal: 600,
   activeMinutes: 65,
@@ -31,22 +28,20 @@ const weeklyFrequency: WeeklyFrequencyDay[] = [
 describe('telemetryRings', () => {
   it('computes per-ring progress and the rounded aggregate', () => {
     const { rings, aggregatePercent } = telemetryRings(telemetry);
-    expect(rings.map((r) => r.color)).toEqual(['primary', 'secondary', 'tertiary']);
-    expect(rings[0]!.progress).toBeCloseTo(0.842);
-    expect(rings[2]!.progress).toBe(1);
+    expect(rings.map((r) => r.color)).toEqual(['secondary', 'tertiary']);
+    expect(rings[0]!.progress).toBeCloseTo(0.7);
+    expect(rings[1]!.progress).toBe(1);
     expect(aggregatePercent).toBe(85);
   });
 
   it('caps progress at 100% and tolerates a zero goal', () => {
     const { rings } = telemetryRings({
-      steps: 20000,
-      stepsGoal: 10000,
       activeBurnKcal: 10,
       activeBurnGoalKcal: 0,
-      activeMinutes: 0,
+      activeMinutes: 99,
       activeMinutesGoal: 30,
     });
-    expect(rings.map((r) => r.progress)).toEqual([1, 0, 0]);
+    expect(rings.map((r) => r.progress)).toEqual([0, 1]);
   });
 });
 
@@ -66,8 +61,6 @@ describe('weekly frequency', () => {
 });
 
 describe('formatting helpers', () => {
-  it('formats sleep minutes', () => expect(formatSleep(465)).toBe('7h 45m'));
-
   it('picks a greeting by hour', () => {
     expect(getGreeting(new Date(2026, 9, 24, 8))).toBe('Good morning');
     expect(getGreeting(new Date(2026, 9, 24, 14))).toBe('Good afternoon');

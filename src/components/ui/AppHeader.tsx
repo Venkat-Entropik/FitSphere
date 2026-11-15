@@ -1,9 +1,11 @@
-import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SyncStatusPill } from '@/features/sync/components/SyncStatusPill';
 import { env } from '@/config/env';
 import { glow, useTheme } from '@/theme';
+import { useStreak } from '@/features/progress/hooks/useStreak';
 
 import { AppText } from './AppText';
 import { Icon } from './Icon';
@@ -14,13 +16,13 @@ export interface AppHeaderProps {
 }
 
 /**
- * Brand header shared by all tab screens: wordmark, LIVE pill, avatar.
- * The Stitch brand-mark and avatar are remote photos that are not part of the export,
- * so the mark is omitted and the avatar is a neutral placeholder.
+ * Brand header shared by all tab screens: wordmark, sync status, and the current training streak (opens Progress).
  */
 export function AppHeader({ live = true }: AppHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const streak = useStreak();
   return (
     <View
       style={[
@@ -52,13 +54,22 @@ export function AppHeader({ live = true }: AppHeaderProps) {
             </AppText>
           </View>
         ) : null}
-        <View
-          accessibilityRole="image"
-          accessibilityLabel="Profile"
-          style={[styles.avatar, { backgroundColor: theme.colors.surfaceHigh }]}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${streak} day streak. Open progress`}
+          hitSlop={8}
+          onPress={() => router.navigate('/progress')}
+          style={[styles.live, { backgroundColor: theme.colors.surface }]}
         >
-          <Icon name="person" size={18} color="onSurfaceVariant" />
-        </View>
+          <Icon
+            name="local_fire_department"
+            size={16}
+            color={streak > 0 ? 'primary' : 'onSurfaceVariant'}
+          />
+          <AppText variant="labelUi" weight="semibold" tabular>
+            {streak}
+          </AppText>
+        </Pressable>
       </View>
     </View>
   );
@@ -81,11 +92,4 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

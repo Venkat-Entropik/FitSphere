@@ -103,7 +103,70 @@ describe('applyChange', () => {
   });
 });
 
+describe('routines and custom exercises', () => {
+  const base = emptyLocalData('Sam');
+  const r = {
+    id: 'r1',
+    name: 'A',
+    exercises: [{ exerciseId: 'x', sets: 3 }],
+    createdAt: 1,
+    updatedAt: 1,
+  };
+  const ex = {
+    id: 'custom-1',
+    name: 'Sled Push',
+    muscleGroup: 'legs',
+    muscles: 'Legs',
+    equipment: 'machine',
+    category: 'Legs · Custom',
+    repRange: [8, 12],
+    incrementKg: 5,
+    startKg: 0,
+  } as const;
+
+  it('replaces a routine saved again and tolerates deleting a missing one', () => {
+    const out = applyChanges(base, [
+      { type: 'routine.save', routine: r },
+      { type: 'routine.save', routine: { ...r, name: 'B', updatedAt: 2 } },
+    ]);
+    expect(out.routines.map((x) => x.name)).toEqual(['B']);
+    const gone = applyChange(out, { type: 'routine.delete', routineId: 'r1' });
+    expect(gone.routines).toEqual([]);
+    expect(() => applyChange(gone, { type: 'routine.delete', routineId: 'r1' })).not.toThrow();
+  });
+
+  it('adds, replaces and removes custom exercises', () => {
+    const out = applyChanges(base, [
+      { type: 'exercise.save', exercise: ex },
+      { type: 'exercise.save', exercise: { ...ex, startKg: 10 } },
+    ]);
+    expect(out.customExercises).toHaveLength(1);
+    expect(out.customExercises[0]!.startKg).toBe(10);
+    expect(
+      applyChange(out, { type: 'exercise.delete', exerciseId: 'custom-1' }).customExercises,
+    ).toEqual([]);
+  });
+
+  it('copes with a local copy saved before routines existed', () => {
+    const old = { ...base } as Partial<typeof base>;
+    delete old.routines;
+    delete old.customExercises;
+    expect(
+      applyChange(old as typeof base, { type: 'routine.save', routine: r }).routines,
+    ).toHaveLength(1);
+    expect(
+      applyChange(old as typeof base, { type: 'exercise.save', exercise: ex }).customExercises,
+    ).toHaveLength(1);
+  });
+});
+
 describe('describing changes', () => {
+  it('names routines and exercises', () => {
+    const routine = { id: 'r', name: 'Push A', exercises: [], createdAt: 1, updatedAt: 1 };
+    expect(describeChange({ type: 'routine.save', routine })).toBe('Routine: Push A');
+    expect(describeChange({ type: 'routine.delete', routineId: 'r' })).toBe('Deleted a routine');
+  });
+
   it('uses plain words', () => {
     expect(describeChange({ type: 'meal.log', dateKey: 'x', meal })).toBe('Meal: Bowl');
     expect(

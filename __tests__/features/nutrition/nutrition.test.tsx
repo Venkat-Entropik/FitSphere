@@ -216,7 +216,8 @@ describe('NutritionScreen', () => {
 
   it('validates the quick-add form before saving', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByRole('button', { name: 'Quick Add Food' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add Food' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add manually' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Add to today' }));
     expect(await screen.findByText('Enter a food name')).toBeTruthy();
     expect(screen.getByText('Enter calories')).toBeTruthy();
@@ -225,7 +226,8 @@ describe('NutritionScreen', () => {
 
   it('saves a valid quick-add entry', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByRole('button', { name: 'Quick Add Food' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add Food' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add manually' }));
     await fireEvent.changeText(await screen.findByLabelText('Food'), 'Greek yogurt');
     await fireEvent.changeText(screen.getByLabelText('Calories'), '150');
     await fireEvent.press(screen.getByRole('button', { name: 'Add to today' }));

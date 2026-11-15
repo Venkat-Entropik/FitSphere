@@ -11,55 +11,51 @@ export const GOALS: readonly GoalOption[] = [
   {
     id: 'muscle',
     title: 'Build Muscle',
-    subtitle: 'Hypertrophic Adaptation',
-    description:
-      'Max lean mass acceleration, volume periodization, and timed intra-workout amino balance.',
+    subtitle: 'Gain size and strength',
+    description: 'Lift more over time and eat enough protein to grow.',
     icon: 'fitness_center',
     proteinPerKg: 2.05,
     idealDays: [4, 6],
-    optimalLabel: 'Hypertrophy Optimal',
+    optimalLabel: 'Great for building muscle',
   },
   {
     id: 'fat_loss',
     title: 'Fat Loss & Cut',
-    subtitle: 'Metabolic Density Focus',
-    description:
-      'Deficit preservation algorithm, glycemic stabilization, and high-density functional conditioning.',
+    subtitle: 'Lose fat, keep muscle',
+    description: 'A calorie deficit with high protein and steady training.',
     icon: 'local_fire_department',
     proteinPerKg: 2.2,
     idealDays: [4, 6],
-    optimalLabel: 'Fat Loss Optimal',
+    optimalLabel: 'Great for fat loss',
   },
   {
     id: 'endurance',
     title: 'Endurance & Speed',
-    subtitle: 'VO2 Max & Cadence',
-    description:
-      'Lactate clearance tuning, mitochondrial density stimulation, and aerobic engine conditioning.',
+    subtitle: 'Last longer and go faster',
+    description: 'Build stamina and speed with regular cardio and enough recovery.',
     icon: 'sprint',
     proteinPerKg: 1.6,
     idealDays: [4, 6],
-    optimalLabel: 'Endurance Optimal',
+    optimalLabel: 'Great for endurance',
   },
   {
     id: 'athletic',
     title: 'Athletic Performance',
-    subtitle: 'Kinetic Explosiveness',
-    description:
-      'Explosive triple-extension power output, CNS fatigue dampening, and elastic tendon integrity.',
+    subtitle: 'Move and perform better',
+    description: 'Strength, power and conditioning for sport and everyday life.',
     icon: 'bolt',
     proteinPerKg: 1.8,
     idealDays: [3, 5],
-    optimalLabel: 'Performance Optimal',
+    optimalLabel: 'Great for performance',
   },
 ];
 
 export const goalById = (id: GoalId): GoalOption => GOALS.find((g) => g.id === id)!;
 
 export const EXPERIENCE_OPTIONS: readonly { id: Experience; label: string; years: string }[] = [
-  { id: 'beginner', label: 'Beginner', years: '0–1 yrs' },
-  { id: 'intermediate', label: 'Intermediate', years: '2-4 yrs continuous' },
-  { id: 'advanced', label: 'Advanced', years: '5+ yrs' },
+  { id: 'beginner', label: 'Beginner', years: 'Under 1 year of training' },
+  { id: 'intermediate', label: 'Intermediate', years: '1–4 years of steady training' },
+  { id: 'advanced', label: 'Advanced', years: '5+ years of training' },
 ];
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
@@ -112,9 +108,8 @@ export function synthesize(
 export function cadenceSummary(goal: GoalId, days: number): { label: string; rest: string } {
   const g = goalById(goal);
   const [min, max] = g.idealDays;
-  const label =
-    days < min ? 'Below ideal range' : days > max ? 'Above ideal range' : g.optimalLabel;
-  return { label, rest: `${7 - days} Rest & CNS Recovery` };
+  const label = days < min ? 'Fewer than ideal' : days > max ? 'More than ideal' : g.optimalLabel;
+  return { label, rest: `${7 - days} rest ${7 - days === 1 ? 'day' : 'days'}` };
 }
 
 export function targetDelta(profile: Pick<OnboardingProfile, 'weightKg' | 'targetKg'>): number {

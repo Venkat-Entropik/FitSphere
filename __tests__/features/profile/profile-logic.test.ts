@@ -4,7 +4,6 @@ import {
   buildSessionFromPlan,
   repeatLastSession,
 } from '@/features/workouts/utils/workout-history.logic';
-import { sampleMembership, sampleSensors } from '@/features/profile/services/sample-account.mock';
 import {
   cadenceSummary,
   goalTrajectory,
@@ -27,7 +26,7 @@ describe('headerStats', () => {
       heightCm: 175,
       bodyFatPercent: 13.8,
       streak: 14,
-      goalSubtitle: 'Hypertrophic Adaptation',
+      goalSubtitle: 'Gain size and strength',
     });
     expect(['I', 'II']).toContain(s.phase);
   });
@@ -100,11 +99,6 @@ describe('intake / cadence / misc', () => {
     expect(parseNumberInput('abc')).toBeNull();
     expect(parseNumberInput('')).toBeNull();
     expect(parseNumberInput('-4')).toBeNull();
-  });
-
-  it('labels sample devices and membership as data, not live connections', () => {
-    expect(sampleSensors).toHaveLength(4);
-    expect(sampleMembership.title).toContain('Elite');
   });
 });
 

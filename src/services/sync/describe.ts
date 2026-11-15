@@ -15,6 +15,14 @@ export function describeChange(change: SyncChange): string {
       return change.ml >= 0 ? `Water +${change.ml} ml` : `Water ${change.ml} ml`;
     case 'weight.log':
       return `Weight: ${change.entry.kg} kg`;
+    case 'routine.save':
+      return `Routine: ${change.routine.name}`;
+    case 'routine.delete':
+      return 'Deleted a routine';
+    case 'exercise.save':
+      return `Exercise: ${change.exercise.name}`;
+    case 'exercise.delete':
+      return 'Deleted an exercise';
     case 'profile.save':
     case 'profile.patch':
       return 'Profile changes';

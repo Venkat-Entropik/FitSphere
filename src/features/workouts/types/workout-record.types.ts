@@ -34,6 +34,15 @@ export interface PlanExerciseSlot {
   sets: number;
 }
 
+/** A workout the user built themselves. It runs through the same code as the built-in plans. */
+export interface Routine {
+  id: string;
+  name: string;
+  exercises: PlanExerciseSlot[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface WorkoutPlan {
   id: string;
   name: string;

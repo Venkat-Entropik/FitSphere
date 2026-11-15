@@ -13,6 +13,7 @@ import { useActiveWorkoutStore } from '@/store/active-workout.store';
 
 import { ExerciseTrackerCard } from '../components/ExerciseTrackerCard';
 import { ExerciseVideoSheet } from '../components/ExerciseVideoSheet';
+import { MyRoutinesSection } from '../components/MyRoutinesSection';
 import { NextExerciseBar } from '../components/NextExerciseBar';
 import { RestTimerCard } from '../components/RestTimerCard';
 import { SessionTelemetryCard } from '../components/SessionTelemetryCard';
@@ -112,6 +113,7 @@ export function WorkoutsScreen() {
             Pick a day to start a session.
           </AppText>
         )}
+        <MyRoutinesSection onStart={(routineId) => void startWorkout(routineId)} />
         <ExerciseVideoSheet exercise={videoExercise} onClose={() => setVideoExercise(null)} />
       </Screen>
     );

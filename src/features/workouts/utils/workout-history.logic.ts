@@ -214,8 +214,12 @@ export function buildSessionFromPlan(
 ): ActiveSessionTemplate {
   const { autoOverload = true } = options;
   const bests = personalBests(records);
-  const exercises: SessionExercise[] = plan.exercises.map((slot, exerciseIndex) => {
-    const info = catalog.find((c) => c.id === slot.exerciseId)!;
+  // A routine can mention an exercise that was since deleted; leave it out rather than crash.
+  const resolved = plan.exercises.flatMap((slot) => {
+    const info = catalog.find((c) => c.id === slot.exerciseId);
+    return info ? [{ slot, info }] : [];
+  });
+  const exercises: SessionExercise[] = resolved.map(({ slot, info }, exerciseIndex) => {
     const sessions = exerciseSessions(records, info.id);
     const target = autoOverload
       ? suggestOverload(info, sessions)

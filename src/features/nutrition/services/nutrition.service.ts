@@ -14,6 +14,8 @@ export interface NutritionRepository {
   logMeal(dateKey: string, input: NewMealInput, now?: number): Promise<NutritionDayRecord>;
   removeMeal(dateKey: string, mealId: string): Promise<NutritionDayRecord>;
   addWater(dateKey: string, ml: number, goalMl: number): Promise<NutritionDayRecord>;
+  /** Meals logged in the last weeks, newest first, to offer again. */
+  getRecentMeals(): Promise<Meal[]>;
 }
 
 const dayOf = (dateKey: string): NutritionDayRecord =>
@@ -39,6 +41,10 @@ export const nutritionService: NutritionRepository = {
   removeMeal: async (dateKey, mealId) => {
     await commitChange({ type: 'meal.remove', dateKey, mealId });
     return dayOf(dateKey);
+  },
+  getRecentMeals: async () => {
+    await dbReady();
+    return Object.values(useMockDb.getState().nutritionDays).flatMap((d) => d.meals);
   },
   addWater: async (dateKey, ml, goalMl) => {
     await commitChange({ type: 'water.add', dateKey, ml, goalMl, eventId: eventId() });

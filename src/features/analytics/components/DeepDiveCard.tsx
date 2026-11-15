@@ -16,15 +16,7 @@ export function DeepDiveCard({ benchmark }: { benchmark: AnalyticsOverview['next
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           <Icon name="tune" size={20} color="onSurfaceVariant" />
           <AppText variant="headlineMd" weight="bold" style={{ flexShrink: 1 }}>
-            Biometric Deep Dive
-          </AppText>
-        </View>
-        <View
-          accessibilityLabel="Configure sensors (coming soon)"
-          style={{ opacity: 0.7, alignItems: 'flex-end' }}
-        >
-          <AppText variant="labelCaps" color="primary" style={{ textAlign: 'right' }}>
-            Configure{'\n'}Sensors
+            Up Next
           </AppText>
         </View>
       </View>

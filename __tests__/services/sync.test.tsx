@@ -76,6 +76,9 @@ function serveSeed(overrides: { onboardingComplete?: boolean } = {}) {
         return { data: seed.activities };
       case '/nutrition/range':
         return { data: Object.values(seed.nutritionDays) };
+      case '/routines':
+      case '/exercises/custom':
+        return { data: [] };
       default:
         throw new Error(`Unexpected GET ${url}`);
     }
@@ -229,6 +232,87 @@ describe('working offline', () => {
   it('rejects impossible values before they are queued', async () => {
     await expect(profileService.logWeight({ kg: 5 }, NOW)).rejects.toThrow();
     expect(useOutbox.getState().items).toHaveLength(0);
+  });
+});
+
+describe('routines and custom exercises sync', () => {
+  const routine = {
+    id: 'routine-1',
+    name: 'Push A',
+    exercises: [{ exerciseId: 'bench-press', sets: 4 }],
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+
+  it('keeps a routine created offline and sends it later', async () => {
+    client.post.mockRejectedValue(offline());
+    await workoutService.saveRoutine(routine);
+    await syncNow('write');
+    expect((await workoutService.getRoutines()).map((r) => r.name)).toEqual(['Push A']);
+    expect(pending()).toHaveLength(1);
+
+    client.post.mockResolvedValue({ data: {} });
+    await syncNow('manual');
+    expect(client.post).toHaveBeenCalledWith('/routines', routine);
+    expect(pending()).toHaveLength(0);
+  });
+
+  it('sends only the fields the server stores for a custom exercise, and deletes by id', async () => {
+    const exercise = {
+      id: 'custom-1',
+      name: 'Sled Push',
+      muscleGroup: 'legs',
+      muscles: 'Legs',
+      equipment: 'machine',
+      category: 'Legs · Custom',
+      repRange: [8, 12],
+      incrementKg: 5,
+      startKg: 0,
+      video: { youtubeId: 'aaaaaaaaaaa', title: 'ignored' },
+      cues: ['ignored'],
+    } as const;
+    await workoutService.saveCustomExercise(exercise as never);
+    await workoutService.deleteCustomExercise('custom-1');
+    await workoutService.deleteRoutine('routine-1');
+    await syncNow('manual');
+    const sent = client.post.mock.calls.find((c) => c[0] === '/exercises/custom')![1] as Record<
+      string,
+      unknown
+    >;
+    expect(Object.keys(sent).sort()).toEqual(
+      [
+        'category',
+        'equipment',
+        'id',
+        'incrementKg',
+        'muscleGroup',
+        'muscles',
+        'name',
+        'repRange',
+        'startKg',
+      ].sort(),
+    );
+    expect(client.delete).toHaveBeenCalledWith('/exercises/custom/custom-1');
+    expect(client.delete).toHaveBeenCalledWith('/routines/routine-1');
+  });
+
+  it('brings routines and custom exercises from the account when catching up', async () => {
+    const seed = serveSeed();
+    void seed;
+    client.get.mockImplementation(async (url: string) => {
+      if (url === '/routines') return { data: [routine] };
+      if (url === '/exercises/custom') return { data: [] };
+      if (url === '/profile')
+        return { data: { ...emptyLocalData('Sam').profile, onboardingComplete: true } };
+      if (url === '/nutrition/range') return { data: [] };
+      return { data: [] };
+    });
+    await syncNow('start');
+    expect((await workoutService.getRoutines()).map((r) => r.id)).toEqual(['routine-1']);
+    expect((await workoutService.getPlans()).at(-1)).toMatchObject({
+      id: 'routine-1',
+      categoryId: 'custom',
+    });
   });
 });
 

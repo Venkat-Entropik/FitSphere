@@ -49,7 +49,7 @@ export function SynthesisBanner({ synthesis }: { synthesis: ProgressOverview['sy
             weight="semibold"
             style={{ flexShrink: 1 }}
           >
-            FitSphere Autonomous Synthesis
+            Progress Summary
           </AppText>
           <AppText variant="labelCaps" color="onSurfaceVariant" weight="regular">
             Live

@@ -76,10 +76,7 @@ export function BodySignals({ data }: { data: AnalyticsOverview }) {
           uppercase
           style={{ letterSpacing: 0.9 }}
         >
-          Body Density &amp; Recovery Signals
-        </AppText>
-        <AppText variant="labelCaps" color="primary">
-          Live InBody Sync
+          Body Signals
         </AppText>
       </View>
       <Card>
@@ -136,49 +133,39 @@ export function BodySignals({ data }: { data: AnalyticsOverview }) {
           <Sparkline values={weight.trend} height={40} accessibilityLabel="Body weight trend" />
         </View>
       </Card>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <SignalTile
-          label="Skeletal Muscle"
-          icon="fitness_center"
-          iconColor="primary"
-          value={String(data.skeletalMuscle.kg)}
-          unit="kg"
-          caption={`${signed(data.skeletalMuscle.deltaKg)} kg lean gain`}
-          captionColor="primary"
-          captionIcon={data.skeletalMuscle.deltaKg >= 0 ? 'arrow_upward' : 'arrow_downward'}
-        />
-        <SignalTile
-          label="Body Fat %"
-          icon="pie_chart"
-          iconColor="secondary"
-          value={String(data.bodyFat.percent)}
-          unit="%"
-          caption={`${signed(data.bodyFat.deltaPercent)}% this cycle`}
-          captionColor="secondary"
-          captionIcon={data.bodyFat.deltaPercent <= 0 ? 'arrow_downward' : 'arrow_upward'}
-        />
-      </View>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <SignalTile
-          label="Resting HR"
-          icon="favorite"
-          iconColor="error"
-          value={String(data.restingHr.bpm)}
-          unit="bpm"
-          caption={data.restingHr.label}
-          captionColor="onSurfaceVariant"
-        />
-        <SignalTile
-          label="HRV Recovery"
-          icon="ecg_heart"
-          iconColor="tertiary"
-          value={String(data.hrv.ms)}
-          unit="ms"
-          caption={data.hrv.label}
-          captionColor="primary"
-          captionStrong
-        />
-      </View>
+      {data.skeletalMuscle.kg > 0 || data.bodyFat.percent > 0 ? (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {data.skeletalMuscle.kg > 0 ? (
+            <SignalTile
+              label="Skeletal Muscle"
+              icon="fitness_center"
+              iconColor="primary"
+              value={String(data.skeletalMuscle.kg)}
+              unit="kg"
+              caption={`${signed(data.skeletalMuscle.deltaKg)} kg in this period`}
+              captionColor="primary"
+              captionIcon={data.skeletalMuscle.deltaKg >= 0 ? 'arrow_upward' : 'arrow_downward'}
+            />
+          ) : null}
+          {data.bodyFat.percent > 0 ? (
+            <SignalTile
+              label="Body Fat %"
+              icon="pie_chart"
+              iconColor="secondary"
+              value={String(data.bodyFat.percent)}
+              unit="%"
+              caption={`${signed(data.bodyFat.deltaPercent)}% in this period`}
+              captionColor="secondary"
+              captionIcon={data.bodyFat.deltaPercent <= 0 ? 'arrow_downward' : 'arrow_upward'}
+            />
+          ) : null}
+        </View>
+      ) : (
+        <AppText variant="bodySm" color="onSurfaceVariant">
+          Add body fat and muscle mass when you log a weigh-in on the Progress screen to track them
+          here.
+        </AppText>
+      )}
     </View>
   );
 }

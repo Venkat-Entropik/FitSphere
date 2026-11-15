@@ -2,59 +2,11 @@ import { View } from 'react-native';
 
 import { Card } from '@/components/cards/Card';
 import { AppText } from '@/components/ui/AppText';
-import { Icon, type IconName } from '@/components/ui/Icon';
+import { Icon } from '@/components/ui/Icon';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { useTheme, type ColorToken } from '@/theme';
+import { useTheme } from '@/theme';
 
 import type { RecoverySnapshot } from '../types/dashboard.types';
-import { formatSleep } from '../utils/telemetry';
-
-interface BiomarkerTileProps {
-  label: string;
-  value: string;
-  unit?: string;
-  icon: IconName;
-  iconColor: ColorToken;
-}
-
-function BiomarkerTile({ label, value, unit, icon, iconColor }: BiomarkerTileProps) {
-  const theme = useTheme();
-  return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 10,
-        borderRadius: theme.radius.sm,
-        backgroundColor: theme.colors.surface,
-      }}
-    >
-      <View>
-        <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
-          {label}
-        </AppText>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 }}>
-          <AppText variant="headlineMd" tabular>
-            {value}
-          </AppText>
-          {unit ? (
-            <AppText
-              variant="labelCaps"
-              color="onSurfaceVariant"
-              weight="regular"
-              style={{ fontSize: 12 }}
-            >
-              {unit}
-            </AppText>
-          ) : null}
-        </View>
-      </View>
-      <Icon name={icon} size={20} color={iconColor} />
-    </View>
-  );
-}
 
 export function RecoveryCard({ recovery }: { recovery: RecoverySnapshot }) {
   const theme = useTheme();
@@ -64,7 +16,7 @@ export function RecoveryCard({ recovery }: { recovery: RecoverySnapshot }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Icon name="vital_signs" size={20} color="secondary" />
           <AppText variant="labelUi" weight="semibold">
-            Recovery &amp; Biomarkers
+            Recovery
           </AppText>
         </View>
         <View
@@ -104,21 +56,10 @@ export function RecoveryCard({ recovery }: { recovery: RecoverySnapshot }) {
           accessibilityLabel={`Recovery score ${recovery.score} percent`}
         />
       </View>
-      <View style={{ flexDirection: 'row', gap: 8, paddingTop: 4 }}>
-        <BiomarkerTile
-          label="HRV Strain"
-          value={String(recovery.hrvMs)}
-          unit="ms"
-          icon="ecg_heart"
-          iconColor="secondary"
-        />
-        <BiomarkerTile
-          label="Rest & Sleep"
-          value={formatSleep(recovery.sleepMinutes)}
-          icon="bedtime"
-          iconColor="tertiary"
-        />
-      </View>
+      <AppText variant="bodySm" color="onSurfaceVariant">
+        An estimate from how recently and how hard you trained. It does not use sleep or heart-rate
+        data.
+      </AppText>
     </Card>
   );
 }

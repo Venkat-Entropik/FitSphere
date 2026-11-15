@@ -14,7 +14,13 @@ import type { SyncChange } from './types';
 /** The part of the local database that mirrors the server. */
 export type LocalData = Pick<
   MockDbState,
-  'profile' | 'weights' | 'workouts' | 'activities' | 'nutritionDays'
+  | 'profile'
+  | 'weights'
+  | 'workouts'
+  | 'activities'
+  | 'nutritionDays'
+  | 'routines'
+  | 'customExercises'
 >;
 
 /** A blank account, matching the server's default profile until the first sync fills in the real one. */
@@ -37,6 +43,8 @@ export function emptyLocalData(name: string): LocalData {
     workouts: [],
     activities: [],
     nutritionDays: {},
+    routines: [],
+    customExercises: [],
   };
 }
 
@@ -126,6 +134,29 @@ export function applyChange(data: LocalData, change: SyncChange): LocalData {
           },
           change.now,
         ),
+      };
+    case 'routine.save':
+      return {
+        ...data,
+        routines: [
+          ...(data.routines ?? []).filter((r) => r.id !== change.routine.id),
+          change.routine,
+        ],
+      };
+    case 'routine.delete':
+      return { ...data, routines: (data.routines ?? []).filter((r) => r.id !== change.routineId) };
+    case 'exercise.save':
+      return {
+        ...data,
+        customExercises: [
+          ...(data.customExercises ?? []).filter((e) => e.id !== change.exercise.id),
+          change.exercise,
+        ],
+      };
+    case 'exercise.delete':
+      return {
+        ...data,
+        customExercises: (data.customExercises ?? []).filter((e) => e.id !== change.exerciseId),
       };
     case 'profile.patch':
       return {

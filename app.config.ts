@@ -7,15 +7,19 @@ const config: ExpoConfig = {
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  // Follow the user's theme preference at runtime (see src/theme/use-theme.ts).
-  userInterfaceStyle: 'automatic',
+  // The design is dark-only today (see src/theme/use-theme.ts).
+  userInterfaceStyle: 'dark',
+  backgroundColor: '#121416',
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.fitsphere.app',
     infoPlist: {
+      // The app only uses the platform's HTTPS; this skips the export-compliance questionnaire on each upload.
+      ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:
         'FitSphere uses your location to record the route, distance and pace of your runs, walks and rides.',
-      NSCameraUsageDescription: 'FitSphere uses the camera so you can take progress photos.',
+      NSCameraUsageDescription:
+        'FitSphere uses the camera to take progress photos and to scan food barcodes.',
       NSPhotoLibraryUsageDescription:
         'FitSphere lets you choose progress photos from your library.',
     },
@@ -23,7 +27,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.fitsphere.app',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#121416',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -37,7 +41,7 @@ const config: ExpoConfig = {
     'expo-secure-store',
     [
       'expo-splash-screen',
-      { image: './assets/images/splash-icon.png', imageWidth: 200, backgroundColor: '#FFFFFF' },
+      { image: './assets/images/splash-icon.png', imageWidth: 200, backgroundColor: '#121416' },
     ],
     [
       'expo-location',
@@ -47,7 +51,10 @@ const config: ExpoConfig = {
     ],
     [
       'expo-camera',
-      { cameraPermission: 'FitSphere uses the camera so you can take progress photos.' },
+      {
+        cameraPermission:
+          'FitSphere uses the camera to take progress photos and to scan food barcodes.',
+      },
     ],
     [
       'expo-image-picker',

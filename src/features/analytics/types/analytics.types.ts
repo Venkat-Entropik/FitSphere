@@ -26,12 +26,11 @@ export interface DensityDay {
 export interface AnalyticsOverview {
   range: AnalyticsRange;
   athleteLine: string;
-  synthesis: { status: string; sleepThreshold: string; hrvThresholdMs: number };
+  /** A plain-language read of the selected period, computed from logged workouts. */
+  synthesis: { status: string; text: string };
   weight: { kg: number; deltaKg: number; focusLabel: string; trend: number[] };
   skeletalMuscle: { kg: number; deltaKg: number };
   bodyFat: { percent: number; deltaPercent: number };
-  restingHr: { bpm: number; label: string };
-  hrv: { ms: number; label: string };
   volume: { buckets: VolumeBucket[]; previousTotalKg: number; subtitle: string };
   muscles: MuscleShare[];
   cardio: {

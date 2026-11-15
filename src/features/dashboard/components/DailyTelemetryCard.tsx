@@ -9,8 +9,6 @@ import { glow, useTheme, type ColorToken } from '@/theme';
 import type { DailyTelemetry } from '../types/dashboard.types';
 import { telemetryRings } from '../utils/telemetry';
 
-const formatCompact = (n: number) => (n >= 1000 ? `${n / 1000}k` : String(n));
-
 interface MetricRowProps {
   color: ColorToken;
   label: string;
@@ -94,16 +92,6 @@ export function DailyTelemetryCard({ telemetry, weeklyTargetDays }: DailyTelemet
           accessibilityLabel={`Daily progress ${aggregatePercent} percent`}
         />
         <View style={{ flex: 1, gap: 10, minWidth: 0 }}>
-          <MetricRow
-            color="primary"
-            label="Steps"
-            value={telemetry.steps.toLocaleString('en-US')}
-            suffix={
-              <AppText variant="labelCaps" color="onSurfaceVariant">
-                / {formatCompact(telemetry.stepsGoal)}
-              </AppText>
-            }
-          />
           <MetricRow
             color="secondary"
             label="Active Burn"

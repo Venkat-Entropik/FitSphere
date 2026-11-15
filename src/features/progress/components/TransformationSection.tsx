@@ -136,6 +136,7 @@ export interface TransformationSectionProps {
   photoUri: string | null;
   photoStatus: PhotoStatus;
   onLogPhoto: () => void;
+  onLogWeighIn: () => void;
 }
 
 export function TransformationSection({
@@ -143,6 +144,7 @@ export function TransformationSection({
   photoUri,
   photoStatus,
   onLogPhoto,
+  onLogWeighIn,
 }: TransformationSectionProps) {
   const theme = useTheme();
   const delta = bodyDelta(data.baseline, data.current);
@@ -260,8 +262,13 @@ export function TransformationSection({
           </AppText>
         ) : null}
         <Button
+          label="Log Weigh-in"
+          onPress={onLogWeighIn}
+          leftIcon={<Icon name="monitor_weight" size={20} color="onPrimary" />}
+        />
+        <Button
           variant="secondary"
-          label="Log Progress Photo & InBody Scan"
+          label="Take Progress Photo"
           onPress={onLogPhoto}
           leftIcon={<Icon name="photo_camera" size={20} color="primary" />}
         />

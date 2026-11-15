@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 /** What changed on the server; each kind lists every cache that derives from it. */
-export type DataChange = 'workout' | 'activity' | 'nutrition' | 'profile' | 'weight';
+export type DataChange = 'workout' | 'activity' | 'nutrition' | 'profile' | 'weight' | 'routine';
 
 const AFFECTED: Record<DataChange, readonly (readonly string[])[]> = {
   workout: [['workouts', 'history'], ['dashboard'], ['analytics'], ['progress']],
@@ -9,6 +9,11 @@ const AFFECTED: Record<DataChange, readonly (readonly string[])[]> = {
   nutrition: [['nutrition'], ['dashboard']],
   profile: [['profile'], ['nutrition'], ['analytics'], ['dashboard'], ['progress']],
   weight: [['profile'], ['analytics'], ['progress'], ['nutrition']],
+  routine: [
+    ['workouts', 'plans'],
+    ['workouts', 'exercises'],
+    ['workouts', 'routines'],
+  ],
 };
 
 /** Single place that decides which cached queries go stale after a write. */

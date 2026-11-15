@@ -28,7 +28,7 @@ export function CadenceCard({ days, label, rest, onChange }: CadenceCardProps) {
             uppercase
             style={{ letterSpacing: 0.9 }}
           >
-            Weekly Cadence
+            Training days
           </AppText>
           <AppText
             variant="metricLg"

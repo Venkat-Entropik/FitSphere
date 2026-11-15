@@ -6,7 +6,6 @@ import { glow, useTheme, type ColorToken } from '@/theme';
 
 export interface IdentityCardProps {
   name: string;
-  tierLabel: string;
   subtitle: string;
   massKg: number;
   heightCm: number;
@@ -47,7 +46,6 @@ function Stat({
 
 export function IdentityCard({
   name,
-  tierLabel,
   subtitle,
   massKg,
   heightCm,
@@ -95,18 +93,6 @@ export function IdentityCard({
             <AppText variant="headlineMd" accessibilityRole="header">
               {name}
             </AppText>
-            <View
-              style={{
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: theme.radius.pill,
-                backgroundColor: 'rgba(197, 242, 106, 0.2)',
-              }}
-            >
-              <AppText variant="labelCaps" color="primary" uppercase>
-                {tierLabel}
-              </AppText>
-            </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View

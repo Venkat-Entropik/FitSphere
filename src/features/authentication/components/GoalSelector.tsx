@@ -17,7 +17,7 @@ const ICON_TINT: Record<GoalId, ColorToken> = {
 export interface GoalSelectorProps {
   goals: readonly GoalOption[];
   value: GoalId;
-  recommended: GoalId;
+  recommended?: GoalId;
   onChange: (id: GoalId) => void;
 }
 

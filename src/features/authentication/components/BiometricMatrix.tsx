@@ -1,8 +1,9 @@
-import { useRef, type ComponentRef } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { Icon } from '@/components/ui/Icon';
+import { noFocusRing } from '@/components/ui/no-focus-ring';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { fontFor, useTheme } from '@/theme';
 
 import type { Sex } from '../types/onboarding.types';
@@ -30,6 +31,7 @@ function NumberField({
 }) {
   const theme = useTheme();
   const ref = useRef<ComponentRef<typeof TextInput>>(null);
+  const [focused, setFocused] = useState(false);
   return (
     <Pressable
       onPress={() => ref.current?.focus()}
@@ -39,8 +41,8 @@ function NumberField({
         padding: 12,
         borderRadius: theme.radius.md,
         backgroundColor: highlighted ? theme.colors.surfaceHigh : theme.colors.surfaceLow,
-        borderWidth: error ? 1 : 0,
-        borderColor: theme.colors.error,
+        borderWidth: 1,
+        borderColor: error ? theme.colors.error : focused ? theme.colors.primary : 'transparent',
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -74,12 +76,15 @@ function NumberField({
           ref={ref}
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           keyboardType="decimal-pad"
           accessibilityLabel={label}
           selectTextOnFocus
           selectionColor={theme.colors.primary}
           style={[
             VALUE_STYLE,
+            noFocusRing,
             {
               fontFamily: fontFor('jakarta', 'bold'),
               color: accent ? theme.colors.primary : theme.colors.onSurface,
@@ -104,96 +109,68 @@ function NumberField({
 }
 
 export interface BiometricMatrixProps {
-  idLabel: string;
   sex: Sex;
-  onToggleSex: () => void;
+  onChangeSex: (sex: Sex) => void;
   height: { value: string; onChange: (v: string) => void; error?: string };
   weight: { value: string; onChange: (v: string) => void; error?: string };
   target: { value: string; onChange: (v: string) => void; error?: string; badge: string };
 }
 
+const SEX_OPTIONS: { id: Sex; label: string }[] = [
+  { id: 'male', label: 'Male' },
+  { id: 'female', label: 'Female' },
+];
+
 export function BiometricMatrix({
-  idLabel,
   sex,
-  onToggleSex,
+  onChangeSex,
   height,
   weight,
   target,
 }: BiometricMatrixProps) {
-  const theme = useTheme();
   return (
-    <View style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <AppText
-          variant="labelCaps"
-          color="onSurfaceVariant"
-          uppercase
-          style={{ letterSpacing: 0.9 }}
-        >
-          Biometric Matrix
+    <View style={{ gap: 16 }}>
+      <View style={{ gap: 8 }}>
+        <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
+          Sex
         </AppText>
-        <AppText variant="labelCaps" color="onSurfaceVariant">
-          {idLabel}
+        <SegmentedControl
+          options={SEX_OPTIONS.map((o) => o.label)}
+          value={SEX_OPTIONS.find((o) => o.id === sex)!.label}
+          onChange={(label) => onChangeSex(SEX_OPTIONS.find((o) => o.label === label)!.id)}
+          accessibilityLabel="Sex"
+          trackColor="surfaceLowest"
+        />
+        <AppText variant="bodySm" color="onSurfaceVariant">
+          Used only to estimate your daily calories.
         </AppText>
       </View>
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Biological sex: ${sex}. Tap to change`}
-            onPress={onToggleSex}
-            style={{
-              flex: 1,
-              gap: 4,
-              padding: 12,
-              borderRadius: theme.radius.md,
-              backgroundColor: theme.colors.surfaceLow,
-            }}
-          >
-            <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
-              Biological Sex
-            </AppText>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <AppText variant="metricLg" color="onSurface" style={{ textTransform: 'capitalize' }}>
-                {sex}
-              </AppText>
-              <Icon name={sex === 'male' ? 'male' : 'female'} size={18} color="onSurfaceVariant" />
-            </View>
-          </Pressable>
-          <NumberField
-            label="Height"
-            unit="cm"
-            value={height.value}
-            onChangeText={height.onChange}
-            error={height.error}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <NumberField
-            label="Current Mass"
-            unit="kg"
-            value={weight.value}
-            onChangeText={weight.onChange}
-            error={weight.error}
-          />
-          <NumberField
-            label="Target Mass"
-            unit="kg lean"
-            value={target.value}
-            onChangeText={target.onChange}
-            error={target.error}
-            accent
-            highlighted
-            badge={target.badge}
-          />
-        </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <NumberField
+          label="Height"
+          unit="cm"
+          value={height.value}
+          onChangeText={height.onChange}
+          error={height.error}
+        />
+        <NumberField
+          label="Weight"
+          unit="kg"
+          value={weight.value}
+          onChangeText={weight.onChange}
+          error={weight.error}
+        />
       </View>
+      <NumberField
+        label="Goal weight"
+        unit="kg"
+        value={target.value}
+        onChangeText={target.onChange}
+        error={target.error}
+        accent
+        highlighted
+        badge={target.badge}
+      />
     </View>
   );
 }

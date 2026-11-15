@@ -1,16 +1,13 @@
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { env } from '@/config/env';
 import { AppText } from '@/components/ui/AppText';
-import { Icon } from '@/components/ui/Icon';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import type { UnitSystem } from '@/store/preferences.store';
 
 import { SettingRow } from './SettingRow';
 import { SettingsSection } from './SettingsSection';
 
 export interface SecurityCardProps {
-  units: UnitSystem;
   reminder: {
     enabled: boolean;
     busy: boolean;
@@ -21,33 +18,10 @@ export interface SecurityCardProps {
   onOpenSettings: () => void;
 }
 
-export function SecurityCard({ units, reminder, onExport, onOpenSettings }: SecurityCardProps) {
+export function SecurityCard({ reminder, onExport, onOpenSettings }: SecurityCardProps) {
+  const router = useRouter();
   return (
     <SettingsSection title="System & Data" icon="shield">
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-          <Icon name="straighten" size={20} color="onSurfaceVariant" />
-          <AppText variant="bodyMd" weight="semibold">
-            Measurement Units
-          </AppText>
-        </View>
-        <View style={{ width: 150 }}>
-          <SegmentedControl
-            options={['Metric', 'Imperial'] as const}
-            value={units === 'metric' ? 'Metric' : 'Imperial'}
-            onChange={() => undefined}
-            disabledOptions={['Imperial']}
-            accessibilityLabel="Measurement units"
-          />
-        </View>
-      </View>
       <SettingRow
         icon="download"
         title="Export Telemetry"
@@ -62,6 +36,18 @@ export function SecurityCard({ units, reminder, onExport, onOpenSettings }: Secu
             ? 'Your data is stored on this device only'
             : 'Saved to your account and kept on this phone for offline use'
         }
+      />
+      <SettingRow
+        icon="policy"
+        title="Privacy Policy"
+        subtitle="What we collect and how it is used"
+        onPress={() => router.navigate('/privacy')}
+      />
+      <SettingRow
+        icon="description"
+        title="Terms of Service"
+        subtitle="The rules for using FitSphere"
+        onPress={() => router.navigate('/terms')}
       />
       <SettingRow
         icon="notifications_active"

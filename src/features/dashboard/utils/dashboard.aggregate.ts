@@ -27,10 +27,7 @@ const WEEKDAY_NAMES = [
   'Saturday',
 ];
 const PROGRAM_WEEKS = 6;
-const TELEMETRY_GOALS = { burnKcal: 600, activeMinutes: 60, steps: 10_000 };
-
-/** The app has no pedometer or wearable yet, so steps/HRV/sleep are labelled sample values. */
-const SAMPLE_SENSORS = { steps: 8420, hrvMs: 68, sleepMinutes: 465 };
+const TELEMETRY_GOALS = { burnKcal: 600, activeMinutes: 60 };
 
 export interface DashboardInput {
   now: number;
@@ -109,12 +106,7 @@ const recoveryLabel = (score: number) =>
   score >= 85 ? 'Optimal State' : score >= 70 ? 'Good State' : 'Take It Easy';
 
 export function recoverySnapshot(score: number): RecoverySnapshot {
-  return {
-    score,
-    label: recoveryLabel(score),
-    hrvMs: SAMPLE_SENSORS.hrvMs,
-    sleepMinutes: SAMPLE_SENSORS.sleepMinutes,
-  };
+  return { score, label: recoveryLabel(score) };
 }
 
 export function relativeDay(at: number, now: number): string {
@@ -192,8 +184,6 @@ export function buildDashboard(input: DashboardInput): DashboardSummary {
     weekNumber: (weeksIn % PROGRAM_WEEKS) + 1,
     programWeeks: PROGRAM_WEEKS,
     telemetry: {
-      steps: SAMPLE_SENSORS.steps,
-      stepsGoal: TELEMETRY_GOALS.steps,
       activeBurnKcal: today.kcal,
       activeBurnGoalKcal: TELEMETRY_GOALS.burnKcal,
       activeMinutes: today.minutes,

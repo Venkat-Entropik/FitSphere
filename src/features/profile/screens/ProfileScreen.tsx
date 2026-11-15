@@ -22,11 +22,9 @@ import { usePreferencesStore } from '@/store/preferences.store';
 import { BaselineCard } from '../components/BaselineCard';
 import { EditProfileSheet, type FieldErrors } from '../components/EditProfileSheet';
 import { IdentityCard } from '../components/IdentityCard';
-import { MembershipCard } from '../components/MembershipCard';
 import { PreferencesCard } from '../components/PreferencesCard';
 import { ProfileTopBar } from '../components/ProfileTopBar';
 import { SecurityCard } from '../components/SecurityCard';
-import { TelemetryCard } from '../components/TelemetryCard';
 import { useExportTelemetry } from '../hooks/useExportTelemetry';
 import { useNutritionTargets, useProfile, useUpdateProfile, useWeights } from '../hooks/useProfile';
 import { useReminderSetting } from '../hooks/useReminderSetting';
@@ -35,7 +33,6 @@ import { DeleteAccountSheet } from '@/features/authentication/components/DeleteA
 import { DEMO_USER_ID } from '@/features/authentication/hooks/useDemoSession';
 import { useSyncStatus } from '@/features/sync/useSyncStatus';
 import { useAuthStore } from '@/store/auth.store';
-import { sampleMembership, sampleSensors } from '../services/sample-account.mock';
 import { ProfileValidationError } from '../services/profile.service';
 import type { ProfilePatch } from '../types/profile.types';
 import {
@@ -67,7 +64,6 @@ export function ProfileScreen() {
   const setAutoOverload = usePreferencesStore((s) => s.setAutoProgressiveOverload);
   const restHaptics = usePreferencesStore((s) => s.restHaptics);
   const setRestHaptics = usePreferencesStore((s) => s.setRestHaptics);
-  const units = usePreferencesStore((s) => s.units);
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -122,7 +118,6 @@ export function ProfileScreen() {
 
       <IdentityCard
         name={data.identity.name}
-        tierLabel={sampleMembership.tierLabel}
         subtitle={`${stats.goalSubtitle} • Phase ${stats.phase}`}
         massKg={stats.massKg}
         heightCm={stats.heightCm}
@@ -139,8 +134,6 @@ export function ProfileScreen() {
         onEdit={() => setEditing(true)}
       />
 
-      <TelemetryCard sensors={sampleSensors} />
-
       <PreferencesCard
         splitSubtitle={`${cadence.split} (${stats.goalSubtitle.split(' ')[0]})`}
         onEditSplit={() => setEditing(true)}
@@ -148,10 +141,7 @@ export function ProfileScreen() {
         restHaptics={{ value: restHaptics, onChange: setRestHaptics }}
       />
 
-      <MembershipCard membership={sampleMembership} />
-
       <SecurityCard
-        units={units}
         reminder={{ ...reminder, onToggle: (next) => void reminder.toggle(next) }}
         onExport={share}
         onOpenSettings={() => void Linking.openSettings()}

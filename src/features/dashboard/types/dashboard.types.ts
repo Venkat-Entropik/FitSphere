@@ -9,8 +9,6 @@ export interface WeeklyFrequencyDay {
 }
 
 export interface DailyTelemetry {
-  steps: number;
-  stepsGoal: number;
   activeBurnKcal: number;
   activeBurnGoalKcal: number;
   activeMinutes: number;
@@ -32,8 +30,6 @@ export interface RecoverySnapshot {
   /** 0–100 */
   score: number;
   label: string;
-  hrvMs: number;
-  sleepMinutes: number;
 }
 
 export interface RecentLog {

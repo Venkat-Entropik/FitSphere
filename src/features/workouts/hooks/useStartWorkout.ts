@@ -34,12 +34,13 @@ export function useStartWorkout() {
             staleTime: 0,
           }),
         ]);
-        const plan = plans.find((p) => p.id === planId) ?? nextPlan(history, plans);
-        useActiveWorkoutStore.getState().start(
-          buildSessionFromPlan(plan, catalog, history, Date.now(), {
-            autoOverload: usePreferencesStore.getState().autoProgressiveOverload,
-          }),
-        );
+        const builtIn = plans.filter((p) => p.categoryId !== 'custom');
+        const plan = plans.find((p) => p.id === planId) ?? nextPlan(history, builtIn);
+        const session = buildSessionFromPlan(plan, catalog, history, Date.now(), {
+          autoOverload: usePreferencesStore.getState().autoProgressiveOverload,
+        });
+        // A routine whose exercises were all deleted has nothing to run.
+        if (session.exercises.length > 0) useActiveWorkoutStore.getState().start(session);
       }
       router.navigate('/workouts');
     },

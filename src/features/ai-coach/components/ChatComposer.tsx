@@ -1,6 +1,7 @@
 import { Pressable, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
+import { noFocusRing } from '@/components/ui/no-focus-ring';
 import { fontFor, glow, useTheme } from '@/theme';
 
 export interface ChatComposerProps {
@@ -26,23 +27,6 @@ export function ChatComposer({ value, onChangeText, onSend, sending }: ChatCompo
           ...theme.shadows.md,
         }}
       >
-        {/* Attachments and voice input need native pickers/recording; shown as in the design but inactive. */}
-        <View
-          accessibilityRole="button"
-          accessibilityLabel="Attach biometric or workout log (coming soon)"
-          accessibilityState={{ disabled: true }}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.surfaceHigh,
-            opacity: 0.6,
-          }}
-        >
-          <Icon name="post_add" size={20} color="onSurfaceVariant" />
-        </View>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <TextInput
             value={value}
@@ -56,6 +40,7 @@ export function ChatComposer({ value, onChangeText, onSend, sending }: ChatCompo
             accessibilityLabel="Message the coach"
             maxLength={1000}
             style={{
+              ...noFocusRing,
               height: 44,
               paddingHorizontal: 14,
               paddingRight: 40,

@@ -47,47 +47,19 @@ export function SynthesisPanel({ synthesis }: { synthesis: NutritionSynthesis })
   const theme = useTheme();
   return (
     <Card style={{ gap: 12, backgroundColor: theme.colors.surfaceHigh }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: theme.radius.pill,
-            backgroundColor: theme.colors.surfaceHighest,
-            flexShrink: 1,
-          }}
-        >
-          <Icon name="neurology" size={14} color="secondary" />
-          <AppText variant="labelCaps" color="tertiary" weight="semibold" numberOfLines={1}>
-            Estimate from your inputs
-          </AppText>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View
-            style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary }}
-          />
-          <AppText variant="labelCaps" color="primary" uppercase>
-            Live
-          </AppText>
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Icon name="auto_awesome" size={16} color="primary" />
+        <AppText variant="labelUi" color="onSurface" weight="semibold">
+          Your starting targets
+        </AppText>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8, paddingTop: 4 }}>
-        <Stat label="Baseline Cal" caption="kcal / day">
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Stat label="Calories" caption="kcal / day">
           <AppText variant="metricLg" color="onSurface" tabular>
             ~{synthesis.baselineKcal.toLocaleString('en-US')}
           </AppText>
         </Stat>
-        <Stat label="Target Protein" caption={`${synthesis.proteinPerKg}g / kg`}>
+        <Stat label="Protein" caption={`${synthesis.proteinPerKg}g / kg`}>
           <AppText variant="metricLg" color="primary" tabular>
             {synthesis.proteinG}
             <AppText variant="bodyMd" color="primary">
@@ -95,14 +67,14 @@ export function SynthesisPanel({ synthesis }: { synthesis: NutritionSynthesis })
             </AppText>
           </AppText>
         </Stat>
-        <Stat label="Training Split" caption={synthesis.split.label}>
+        <Stat label="Split" caption={synthesis.split.label}>
           <AppText variant="headlineMd" color="secondary">
             {synthesis.split.code}
           </AppText>
         </Stat>
       </View>
       <AppText variant="bodySm" color="onSurfaceVariant">
-        General estimates for planning, not medical advice. Adjust any time in Profile settings.
+        General estimates for planning, not medical advice.
       </AppText>
     </Card>
   );

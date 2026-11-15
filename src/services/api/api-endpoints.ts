@@ -12,6 +12,8 @@ export const API_ENDPOINTS = {
   },
   workouts: { list: '/workouts', history: '/workouts/history' },
   activities: { list: '/activities' },
+  routines: { list: '/routines' },
+  exercises: { custom: '/exercises/custom' },
   nutrition: {
     daily: '/nutrition/daily',
     range: '/nutrition/range',

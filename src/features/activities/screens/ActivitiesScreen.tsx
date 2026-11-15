@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { ActivityCard } from '@/components/cards/ActivityCard';
 import { MetricCard } from '@/components/cards/MetricCard';
+import { env } from '@/config/env';
 import { Screen } from '@/components/common/Screen';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { AppText } from '@/components/ui/AppText';
@@ -94,7 +95,10 @@ export function ActivitiesScreen() {
           disabled={blocked}
           leftIcon={<Icon name="play_arrow" size={26} color="onPrimary" />}
         />
-        <SecondaryButton label="Preview with sample data" onPress={() => setShowSample(true)} />
+        {/* A developer aid: real users never see a sample activity. */}
+        {__DEV__ || env.useMocks ? (
+          <SecondaryButton label="Preview with sample data" onPress={() => setShowSample(true)} />
+        ) : null}
       </View>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}>

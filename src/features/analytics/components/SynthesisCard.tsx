@@ -23,7 +23,7 @@ export function SynthesisCard({ synthesis }: { synthesis: AnalyticsOverview['syn
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <AppText variant="labelCaps" color="primary" uppercase weight="bold">
-            Biometric Synthesis
+            Training Summary
           </AppText>
           <View
             style={{
@@ -43,15 +43,7 @@ export function SynthesisCard({ synthesis }: { synthesis: AnalyticsOverview['syn
           </View>
         </View>
         <AppText variant="bodyMd" style={{ marginTop: 4, lineHeight: 21 }}>
-          Peak torque correlates directly with sleep exceeding{' '}
-          <AppText variant="bodyMd" color="primary" weight="semibold">
-            {synthesis.sleepThreshold}
-          </AppText>{' '}
-          and HRV above{' '}
-          <AppText variant="bodyMd" color="secondary" weight="semibold">
-            {synthesis.hrvThresholdMs}ms
-          </AppText>
-          . Neuromuscular recovery remains in the prime zone.
+          {synthesis.text}
         </AppText>
       </View>
     </Card>

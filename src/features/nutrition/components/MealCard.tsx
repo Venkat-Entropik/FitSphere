@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Card } from '@/components/cards/Card';
 import { AppText } from '@/components/ui/AppText';
@@ -8,7 +8,7 @@ import { useTheme } from '@/theme';
 import type { Meal } from '../types/nutrition.types';
 import { categoryMeta, formatMealTime } from '../utils/nutrition.logic';
 
-export function MealCard({ meal }: { meal: Meal }) {
+export function MealCard({ meal, onRemove }: { meal: Meal; onRemove?: () => void }) {
   const theme = useTheme();
   const meta = categoryMeta(meal.category);
   return (
@@ -58,12 +58,17 @@ export function MealCard({ meal }: { meal: Meal }) {
             </AppText>
           </View>
         </View>
-        <View
-          accessibilityLabel={`Edit ${meta.label} (coming soon)`}
-          style={{ padding: 4, opacity: 0.6 }}
-        >
-          <Icon name="edit" size={20} color="onSurfaceVariant" />
-        </View>
+        {onRemove ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${meal.title}`}
+            onPress={onRemove}
+            hitSlop={10}
+            style={{ padding: 4 }}
+          >
+            <Icon name="delete_outline" size={22} color="onSurfaceVariant" />
+          </Pressable>
+        ) : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 8 }}>
         {/* Meal photos are remote assets in the Stitch export; a neutral tile stands in. */}

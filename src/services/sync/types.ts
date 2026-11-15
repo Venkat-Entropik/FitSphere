@@ -5,7 +5,11 @@ import type {
   ProfilePatch,
   WeightEntry,
 } from '@/features/profile/types/profile.types';
-import type { WorkoutRecord } from '@/features/workouts/types/workout-record.types';
+import type {
+  Exercise,
+  Routine,
+  WorkoutRecord,
+} from '@/features/workouts/types/workout-record.types';
 
 /**
  * One change made on this device. Each is applied to the local database immediately and sent to the
@@ -20,7 +24,11 @@ export type SyncChange =
   | { type: 'water.add'; dateKey: string; ml: number; goalMl: number; eventId: string }
   | { type: 'weight.log'; entry: WeightEntry; now: number }
   | { type: 'profile.save'; profile: OnboardingProfile; now: number }
-  | { type: 'profile.patch'; patch: ProfilePatch; now: number };
+  | { type: 'profile.patch'; patch: ProfilePatch; now: number }
+  | { type: 'routine.save'; routine: Routine }
+  | { type: 'routine.delete'; routineId: string }
+  | { type: 'exercise.save'; exercise: Exercise }
+  | { type: 'exercise.delete'; exerciseId: string };
 
 export interface QueuedChange {
   /** Queue position and identity. */

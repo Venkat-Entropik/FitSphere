@@ -21,6 +21,7 @@ import {
   weeksToTarget,
 } from '@/features/progress/utils/progress.logic';
 import type { WorkoutRecord } from '@/features/workouts/types/workout-record.types';
+import { useMockDb } from '@/services/mock-db/mock-db';
 import { buildSeed } from '@/services/mock-db/seed';
 
 jest.mock('expo-image-picker', () => ({
@@ -265,9 +266,7 @@ describe('ProgressScreen', () => {
   it('explains when camera permission is denied and never opens the camera', async () => {
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
     await renderScreen();
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Log Progress Photo & InBody Scan' }),
-    );
+    await fireEvent.press(await screen.findByRole('button', { name: 'Take Progress Photo' }));
     await waitFor(() => expect(screen.getByText(/Camera access is off/)).toBeTruthy());
     expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
@@ -279,9 +278,48 @@ describe('ProgressScreen', () => {
       assets: [{ uri: 'file:///photo.jpg' }],
     });
     await renderScreen();
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Log Progress Photo & InBody Scan' }),
-    );
+    await fireEvent.press(await screen.findByRole('button', { name: 'Take Progress Photo' }));
     await waitFor(() => expect(screen.getByLabelText('Progress photo')).toBeTruthy());
+  });
+
+  describe('logging a weigh-in', () => {
+    const open = async () => {
+      await renderScreen();
+      await fireEvent.press(await screen.findByRole('button', { name: 'Log Weigh-in' }));
+    };
+
+    it('saves weight with optional body fat and muscle, then closes', async () => {
+      await open();
+      await fireEvent.changeText(await screen.findByLabelText('Weight (kg)'), '70.4');
+      await fireEvent.changeText(screen.getByLabelText('Body fat % (optional)'), '15.5');
+      await fireEvent.changeText(screen.getByLabelText('Muscle mass, kg (optional)'), '34.2');
+      await fireEvent.press(screen.getByRole('button', { name: 'Save weigh-in' }));
+      await waitFor(() => expect(screen.queryByText('Save weigh-in')).toBeNull());
+      const today = useMockDb.getState().weights.find((w) => w.kg === 70.4);
+      expect(today).toMatchObject({ bodyFatPercent: 15.5, muscleKg: 34.2 });
+      expect(useMockDb.getState().profile.profile.weightKg).toBe(70.4);
+    });
+
+    it('rejects impossible values with a clear message and saves nothing', async () => {
+      const before = useMockDb.getState().weights.length;
+      await open();
+      await fireEvent.changeText(await screen.findByLabelText('Weight (kg)'), '5');
+      await fireEvent.changeText(screen.getByLabelText('Body fat % (optional)'), '99');
+      await fireEvent.press(screen.getByRole('button', { name: 'Save weigh-in' }));
+      expect(await screen.findByText('Enter a weight between 30 and 250 kg')).toBeTruthy();
+      expect(screen.getByText('Body fat must be between 2 and 70')).toBeTruthy();
+      expect(useMockDb.getState().weights).toHaveLength(before);
+    });
+
+    it('needs only a weight', async () => {
+      await open();
+      await fireEvent.changeText(await screen.findByLabelText('Weight (kg)'), '71');
+      await fireEvent.press(screen.getByRole('button', { name: 'Save weigh-in' }));
+      await waitFor(() =>
+        expect(
+          useMockDb.getState().weights.some((w) => w.kg === 71 && w.bodyFatPercent === undefined),
+        ).toBe(true),
+      );
+    });
   });
 });

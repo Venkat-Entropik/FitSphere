@@ -50,6 +50,41 @@ export async function sendChange(change: SyncChange): Promise<void> {
       });
       return;
     }
+    case 'routine.save':
+      await apiClient.post(API_ENDPOINTS.routines.list, change.routine);
+      return;
+    case 'routine.delete':
+      await apiClient.delete(`${API_ENDPOINTS.routines.list}/${change.routineId}`);
+      return;
+    case 'exercise.save': {
+      const {
+        id,
+        name,
+        muscleGroup,
+        muscles,
+        equipment,
+        category,
+        repRange,
+        incrementKg,
+        startKg,
+      } = change.exercise;
+      // Only the fields the server stores: custom exercises have no curated video or cues.
+      await apiClient.post(API_ENDPOINTS.exercises.custom, {
+        id,
+        name,
+        muscleGroup,
+        muscles,
+        equipment,
+        category,
+        repRange: [repRange[0], repRange[1]],
+        incrementKg,
+        startKg,
+      });
+      return;
+    }
+    case 'exercise.delete':
+      await apiClient.delete(`${API_ENDPOINTS.exercises.custom}/${change.exerciseId}`);
+      return;
     case 'profile.save':
       await apiClient.put(API_ENDPOINTS.profile.me, change.profile);
       return;

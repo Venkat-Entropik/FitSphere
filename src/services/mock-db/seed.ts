@@ -188,5 +188,13 @@ export function buildSeed(now = Date.now()) {
   };
 
   const profile: UserProfile = { ...DEFAULT_DRAFT, updatedAt: now };
-  return { profile, weights, workouts, activities, nutritionDays };
+  return {
+    profile,
+    weights,
+    workouts,
+    activities,
+    nutritionDays,
+    routines: [],
+    customExercises: [],
+  };
 }

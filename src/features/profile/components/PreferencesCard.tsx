@@ -26,18 +26,6 @@ export function PreferencesCard({
           toggle={autoOverload}
         />
         <SettingRow
-          title="Autonomous AI Prompts"
-          subtitle="Form correction & intra-set cues · Coming soon"
-          toggle={{ value: false, onChange: () => undefined, disabled: true }}
-          unavailable
-        />
-        <SettingRow
-          title="Audio Pacer & Interval Cues"
-          subtitle="Cadence clicks and rest transitions · Coming soon"
-          toggle={{ value: false, onChange: () => undefined, disabled: true }}
-          unavailable
-        />
-        <SettingRow
           title="Rest Timer Haptics"
           subtitle="A tap each time you log a set"
           toggle={restHaptics}

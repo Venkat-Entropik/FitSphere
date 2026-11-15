@@ -86,28 +86,32 @@ describe('ProfileScreen', () => {
     await renderScreen();
     expect(await screen.findByText('Profile & Settings')).toBeTruthy();
     expect(screen.getByText('Alex Chen')).toBeTruthy();
-    expect(screen.getByText('PRO TIER')).toBeTruthy();
+    expect(screen.queryByText('PRO TIER')).toBeNull();
     expect(screen.getByText('13.8%')).toBeTruthy(); // latest body-fat reading
     expect(screen.getByText('Biometric Baseline & Targets')).toBeTruthy();
     expect(screen.getByText('Lean Muscle Gain')).toBeTruthy();
     expect(screen.getByText('+3.5 kg')).toBeTruthy();
     expect(screen.getByText(/Split: Push • Pull • Legs/)).toBeTruthy();
-    expect(screen.getByText('Connected Telemetry')).toBeTruthy();
     expect(screen.getByText('Training Preferences')).toBeTruthy();
-    expect(screen.getByText('FitSphere Elite AI Member')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Log Out of FitSphere' })).toBeTruthy();
   });
 
-  it('labels sensors and membership as sample and keeps their actions inert', async () => {
+  it('shows no fake devices, membership or unfinished controls', async () => {
     await renderScreen();
-    await screen.findByText('Connected Telemetry');
-    expect(screen.getAllByText('Sample')).toHaveLength(2);
-    expect(
-      screen.getByRole('button', { name: 'Pair New Sensor' }).props.accessibilityState.disabled,
-    ).toBe(true);
-    expect(screen.getByRole('tab', { name: 'Imperial' }).props.accessibilityState.disabled).toBe(
-      true,
-    );
+    await screen.findByText('Profile & Settings');
+    for (const text of [
+      'Connected Telemetry',
+      'FitSphere Elite AI Member',
+      'Apple HealthKit',
+      'Pair New Sensor',
+      'Autonomous AI Prompts',
+      'Audio Pacer & Interval Cues',
+      'Measurement Units',
+    ]) {
+      expect(screen.queryByText(text)).toBeNull();
+    }
+    expect(screen.queryByText(/coming soon/i)).toBeNull();
+    expect(screen.queryByText('Sample')).toBeNull();
   });
 
   it("shows today's intake against the profile-derived budget", async () => {
@@ -169,7 +173,7 @@ describe('ProfileScreen', () => {
     expect(await screen.findByText('Training days / week')).toBeTruthy();
   });
 
-  it('toggles the real preferences and disables the not-yet-built ones', async () => {
+  it('toggles the real preferences', async () => {
     await renderScreen();
     await fireEvent(
       await screen.findByLabelText('Auto-Progressive Overload'),
@@ -179,10 +183,6 @@ describe('ProfileScreen', () => {
     expect(usePreferencesStore.getState().autoProgressiveOverload).toBe(false);
     await fireEvent(screen.getByLabelText('Rest Timer Haptics'), 'valueChange', false);
     expect(usePreferencesStore.getState().restHaptics).toBe(false);
-    expect(
-      screen.getByLabelText('Autonomous AI Prompts').props.disabled ??
-        screen.getByLabelText('Autonomous AI Prompts').props.accessibilityState?.disabled,
-    ).toBeTruthy();
   });
 
   it('exports the athlete data through the share sheet', async () => {

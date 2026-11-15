@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Share } from 'react-native';
 
 import { Screen } from '@/components/common/Screen';
@@ -5,6 +6,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 
 import { BadgesSection } from '../components/BadgesSection';
+import { LogWeighInSheet } from '../components/LogWeighInSheet';
 import { PersonalRecordsSection } from '../components/PersonalRecordsSection';
 import { ProgressHeader } from '../components/ProgressHeader';
 import { StreakCard } from '../components/StreakCard';
@@ -16,6 +18,7 @@ import { useProgressPhoto } from '../hooks/useProgressPhoto';
 export function ProgressScreen() {
   const { data, isPending, error, refetch } = useProgress();
   const photo = useProgressPhoto();
+  const [weighInOpen, setWeighInOpen] = useState(false);
 
   if (isPending) {
     return (
@@ -48,7 +51,9 @@ export function ProgressScreen() {
         photoUri={photo.uri}
         photoStatus={photo.status}
         onLogPhoto={() => void photo.capture()}
+        onLogWeighIn={() => setWeighInOpen(true)}
       />
+      <LogWeighInSheet visible={weighInOpen} onClose={() => setWeighInOpen(false)} />
       <BadgesSection badges={data.badges} />
     </Screen>
   );

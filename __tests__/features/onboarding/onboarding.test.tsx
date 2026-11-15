@@ -65,11 +65,11 @@ describe('onboarding logic', () => {
     expect(recommendedSplit(4).code).toBe('U/L');
     expect(recommendedSplit(6).code).toBe('PPL×2');
     expect(cadenceSummary('muscle', 5)).toEqual({
-      label: 'Hypertrophy Optimal',
-      rest: '2 Rest & CNS Recovery',
+      label: 'Great for building muscle',
+      rest: '2 rest days',
     });
-    expect(cadenceSummary('muscle', 2).label).toBe('Below ideal range');
-    expect(cadenceSummary('athletic', 7).label).toBe('Above ideal range');
+    expect(cadenceSummary('muscle', 2).label).toBe('Fewer than ideal');
+    expect(cadenceSummary('athletic', 7).label).toBe('More than ideal');
   });
 
   it('formats the target delta', () => {
@@ -117,57 +117,61 @@ describe('OnboardingScreen', () => {
       </QueryClientProvider>,
     );
   };
+  const next = async (name = 'Continue') =>
+    fireEvent.press(await screen.findByRole('button', { name }));
 
   beforeEach(() => {
     mockReplace.mockClear();
     usePreferencesStore.setState({ onboardingComplete: false });
   });
 
-  it('shows the reference defaults and derived synthesis', async () => {
+  it('starts on the goal step with the saved goal selected', async () => {
     await renderScreen();
-    expect(await screen.findByText('Tailor Your Sphere.')).toBeTruthy();
+    expect(await screen.findByText('What is your main goal?')).toBeTruthy();
+    expect(screen.getByText('Step 1 of 4')).toBeTruthy();
     expect(
       screen.getByRole('radio', { name: 'Build Muscle' }).props.accessibilityState.checked,
     ).toBe(true);
-    expect(screen.getByText('5 Days / Week')).toBeTruthy();
-    expect(screen.getByText('~2,600')).toBeTruthy();
-    expect(screen.getByText('+3.5kg')).toBeTruthy();
-  });
-
-  it('updates selections and live calculations', async () => {
-    await renderScreen();
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Endurance & Speed' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Endurance & Speed' }));
     expect(
       screen.getByRole('radio', { name: 'Endurance & Speed' }).props.accessibilityState.checked,
     ).toBe(true);
-    expect(
-      screen.getByRole('radio', { name: 'Build Muscle' }).props.accessibilityState.checked,
-    ).toBe(false);
-
-    await fireEvent.press(screen.getByRole('button', { name: 'Train 3 days per week' }));
-    expect(screen.getByText('3 Days / Week')).toBeTruthy();
-    expect(screen.getByText('4 Rest & CNS Recovery')).toBeTruthy();
-
-    await fireEvent.press(screen.getByRole('tab', { name: 'Advanced' }));
-    expect(screen.getByText('5+ yrs')).toBeTruthy();
   });
 
-  it('blocks submit and shows an error for an invalid height', async () => {
+  it('walks through the steps and back', async () => {
     await renderScreen();
+    await next();
+    expect(await screen.findByText('Tell us about you')).toBeTruthy();
+    expect(screen.getByText('+3.5kg to go')).toBeTruthy();
+    await next();
+    expect(await screen.findByText('How do you train?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Train 3 days per week' }));
+    expect(screen.getByText('3 Days / Week')).toBeTruthy();
+    expect(screen.getByText('4 rest days')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('tab', { name: 'Advanced' }));
+    expect(screen.getByText('5+ years of training')).toBeTruthy();
+    await next();
+    expect(await screen.findByText('Your plan is ready')).toBeTruthy();
+    expect(screen.getByText('3 days a week')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+    expect(await screen.findByText('How do you train?')).toBeTruthy();
+  });
+
+  it('will not leave the body step with an invalid height', async () => {
+    await renderScreen();
+    await next();
     await fireEvent.changeText(await screen.findByLabelText('Height'), '90');
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Complete Setup & Launch Dashboard' }),
-    );
+    await next();
     expect(await screen.findByText('Height must be between 120 and 230')).toBeTruthy();
-    expect(mockReplace).not.toHaveBeenCalled();
-    expect(usePreferencesStore.getState().onboardingComplete).toBe(false);
+    expect(screen.queryByText('How do you train?')).toBeNull();
   });
 
   it('saves, marks onboarding complete and opens the dashboard', async () => {
     await renderScreen();
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Complete Setup & Launch Dashboard' }),
-    );
+    await next();
+    await next();
+    await next();
+    await next('Start training');
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
     expect(usePreferencesStore.getState().onboardingComplete).toBe(true);
   });

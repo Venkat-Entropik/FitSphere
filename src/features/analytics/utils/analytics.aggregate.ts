@@ -48,11 +48,37 @@ export interface Bucket {
   end: number;
 }
 
-/** Sensors (resting HR, HRV, sleep) aren't recorded by the app yet; these are labelled sample values. */
-const SAMPLE_SENSORS = {
-  restingHr: { bpm: 52, label: 'Cardio Base • Optimal' },
-  hrv: { ms: 68, label: 'High Capacity' },
-};
+const kgText = (kg: number) => `${kg.toLocaleString('en-US')} kg`;
+
+/** Compares lifting volume with the previous period of the same length. */
+export function trainingSummary(
+  totalKg: number,
+  previousKg: number,
+): AnalyticsOverview['synthesis'] {
+  if (totalKg === 0 && previousKg === 0) {
+    return {
+      status: 'GETTING STARTED',
+      text: 'Log a few workouts and your training trends will show up here.',
+    };
+  }
+  if (previousKg === 0) {
+    return { status: 'NEW', text: `You lifted ${kgText(totalKg)} in this period. Keep it going.` };
+  }
+  const change = Math.round(((totalKg - previousKg) / previousKg) * 100);
+  const compared = `${kgText(totalKg)} vs ${kgText(previousKg)} before`;
+  if (Math.abs(change) < 3) {
+    return { status: 'STEADY', text: `Lifting volume is steady (${compared}).` };
+  }
+  return change > 0
+    ? {
+        status: 'TRENDING UP',
+        text: `Lifting volume is up ${change}% on the previous period (${compared}).`,
+      }
+    : {
+        status: 'DOWN',
+        text: `Lifting volume is down ${Math.abs(change)}% on the previous period (${compared}). A lighter stretch is fine; plan your next session.`,
+      };
+}
 
 /** Rolling 7-day windows ending today. */
 function weeklyBuckets(
@@ -251,7 +277,10 @@ export function buildOverview(input: AggregateInput): AnalyticsOverview {
   return {
     range,
     athleteLine: `${profile.identity.name} • ${p.weightKg} kg • ${GOAL_LABEL[p.goal]} (${p.daysPerWeek}d/wk)`,
-    synthesis: { status: 'OPTIMAL', sleepThreshold: '7h 30m', hrvThresholdMs: 65 },
+    synthesis: trainingSummary(
+      Math.round(inRangeWorkouts.reduce((s, w) => s + w.volumeKg, 0)),
+      previousTotalKg,
+    ),
     weight: {
       kg: latest?.kg ?? p.weightKg,
       deltaKg: delta((w) => w.kg),
@@ -260,8 +289,6 @@ export function buildOverview(input: AggregateInput): AnalyticsOverview {
     },
     skeletalMuscle: { kg: latest?.muscleKg ?? 0, deltaKg: delta((w) => w.muscleKg) },
     bodyFat: { percent: latest?.bodyFatPercent ?? 0, deltaPercent: delta((w) => w.bodyFatPercent) },
-    restingHr: SAMPLE_SENSORS.restingHr,
-    hrv: SAMPLE_SENSORS.hrv,
     volume: {
       buckets: volume,
       previousTotalKg,

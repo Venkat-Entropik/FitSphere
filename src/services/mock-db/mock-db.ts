@@ -4,7 +4,11 @@ import { persist } from 'zustand/middleware';
 import type { ActivityRecord } from '@/features/activities/types/activity.types';
 import type { NutritionDayRecord } from '@/features/nutrition/types/nutrition-record.types';
 import type { UserProfile, WeightEntry } from '@/features/profile/types/profile.types';
-import type { WorkoutRecord } from '@/features/workouts/types/workout-record.types';
+import type {
+  Exercise,
+  Routine,
+  WorkoutRecord,
+} from '@/features/workouts/types/workout-record.types';
 import { zustandAsyncStorage } from '@/services/storage/app-storage';
 
 import { buildSeed } from './seed';
@@ -15,6 +19,9 @@ export interface MockDbState {
   workouts: WorkoutRecord[];
   activities: ActivityRecord[];
   nutritionDays: Record<string, NutritionDayRecord>;
+  /** The user's own routines and exercises. */
+  routines: Routine[];
+  customExercises: Exercise[];
   /**
    * Whose data this is when the app runs against the real backend (the local copy is a replica of the
    * server). Unset for the offline demo's sample data.

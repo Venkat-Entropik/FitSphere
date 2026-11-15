@@ -4,6 +4,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { fontFor, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
+import { noFocusRing } from './no-focus-ring';
 
 export interface CustomInputProps extends TextInputProps {
   label: string;
@@ -58,6 +59,7 @@ export const CustomInput = forwardRef<ComponentRef<typeof TextInput>, CustomInpu
             }}
             style={[
               styles.input,
+              noFocusRing,
               { color: theme.colors.onSurface, fontFamily: fontFor('inter', 'regular') },
               style,
             ]}

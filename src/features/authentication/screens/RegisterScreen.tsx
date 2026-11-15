@@ -2,8 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useRef, type ComponentRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import type { TextInput } from 'react-native';
+import { View, type TextInput } from 'react-native';
 
+import { AppText } from '@/components/ui/AppText';
 import { CustomInput } from '@/components/ui/CustomInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 
@@ -49,11 +50,33 @@ export function RegisterScreen() {
       title="Create your account."
       subtitle="Track workouts, runs and nutrition, and get coaching built on your own data."
       footer={
-        <AuthLink
-          prompt="Already have an account?"
-          action="Sign in"
-          onPress={() => router.navigate('/login')}
-        />
+        <>
+          <AuthLink
+            prompt="Already have an account?"
+            action="Sign in"
+            onPress={() => router.navigate('/login')}
+          />
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <AppText variant="bodySm" color="onSurfaceVariant" style={{ textAlign: 'center' }}>
+              By creating an account you agree to our
+            </AppText>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <AuthLink
+                prompt=""
+                action="Terms of Service"
+                onPress={() => router.navigate('/terms')}
+              />
+              <AppText variant="bodyMd" color="onSurfaceVariant">
+                and
+              </AppText>
+              <AuthLink
+                prompt=""
+                action="Privacy Policy"
+                onPress={() => router.navigate('/privacy')}
+              />
+            </View>
+          </View>
+        </>
       }
     >
       {failure?.banner ? <ErrorBanner message={failure.banner} /> : null}
