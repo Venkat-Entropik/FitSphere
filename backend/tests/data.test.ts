@@ -109,6 +109,12 @@ describe('authentication', () => {
       ['POST', '/activities'],
       ['GET', '/nutrition/daily?date=2026-11-01'],
       ['GET', '/nutrition/range?from=2026-11-01&to=2026-11-01'],
+      ['GET', '/routines'],
+      ['POST', '/routines'],
+      ['DELETE', '/routines/r1'],
+      ['GET', '/exercises/custom'],
+      ['POST', '/exercises/custom'],
+      ['DELETE', '/exercises/custom/e1'],
       ['POST', '/nutrition/foods'],
       ['DELETE', '/nutrition/foods/m1?date=2026-11-01'],
       ['POST', '/nutrition/water'],
@@ -339,6 +345,117 @@ describe('nutrition: offline replays and catch-up', () => {
   });
 });
 
+const routine = (id = 'r1', extra: object = {}) => ({
+  id,
+  name: 'Push A',
+  exercises: [
+    { exerciseId: 'bench-press', sets: 4 },
+    { exerciseId: 'custom-e1', sets: 3 },
+  ],
+  createdAt: NOW,
+  updatedAt: NOW,
+  ...extra,
+});
+
+const customExercise = (id = 'custom-e1', extra: object = {}) => ({
+  id,
+  name: 'Landmine Press',
+  muscleGroup: 'shoulders',
+  muscles: 'Anterior Deltoid · Triceps',
+  equipment: 'barbell',
+  category: 'Shoulder Compound',
+  repRange: [8, 12],
+  incrementKg: 2.5,
+  startKg: 20,
+  ...extra,
+});
+
+describe('routines and custom exercises', () => {
+  it('saves, lists (newest first), updates in place, and deletes routines', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    assert.equal((await call(h, a.token, 'POST', '/routines', routine('r1', { updatedAt: NOW }))).statusCode, 201);
+    await call(h, a.token, 'POST', '/routines', routine('r2', { name: 'Pull A', updatedAt: NOW + 1000 }));
+    assert.deepEqual((await call(h, a.token, 'GET', '/routines')).json().map((r: { id: string }) => r.id), ['r2', 'r1']);
+    // Same id again replaces it (idempotent retry or an edit).
+    await call(h, a.token, 'POST', '/routines', routine('r1', { name: 'Push A v2', updatedAt: NOW + 2000 }));
+    const list = (await call(h, a.token, 'GET', '/routines')).json();
+    assert.equal(list.length, 2);
+    assert.equal(list[0].name, 'Push A v2');
+    assert.equal((await call(h, a.token, 'DELETE', '/routines/r1')).statusCode, 204);
+    assert.equal((await call(h, a.token, 'DELETE', '/routines/r1')).statusCode, 204, 'deleting again is fine');
+    assert.equal((await call(h, a.token, 'GET', '/routines')).json().length, 1);
+  });
+
+  it('validates routines', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    const post = (b: unknown) => call(h, a.token, 'POST', '/routines', b);
+    assert.equal((await post(routine('r1', { name: '  ' }))).statusCode, 400);
+    assert.equal((await post(routine('r1', { exercises: [] }))).statusCode, 400);
+    assert.equal((await post(routine('r1', { exercises: [{ exerciseId: 'x', sets: 0 }] }))).statusCode, 400);
+    assert.equal((await post(routine('r1', { exercises: [{ exerciseId: 'x', sets: 11 }] }))).statusCode, 400);
+    assert.equal((await post(routine('bad id!'))).statusCode, 400);
+    assert.equal((await post(routine('r1', { userId: 'other' }))).statusCode, 400);
+    const many = Array.from({ length: 31 }, (_, i) => ({ exerciseId: `e${i}`, sets: 3 }));
+    assert.equal((await post(routine('r1', { exercises: many }))).statusCode, 400);
+  });
+
+  it('stops at 50 routines but still lets existing ones be edited', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    for (let i = 0; i < 50; i++) await call(h, a.token, 'POST', '/routines', routine(`r${i}`));
+    const over = await call(h, a.token, 'POST', '/routines', routine('one-too-many'));
+    assert.equal(over.statusCode, 409);
+    assert.equal(over.json().code, 'limit_reached');
+    assert.equal((await call(h, a.token, 'POST', '/routines', routine('r0', { name: 'Edited' }))).statusCode, 201);
+  });
+
+  it('saves, validates and deletes custom exercises', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    assert.equal((await call(h, a.token, 'POST', '/exercises/custom', customExercise())).statusCode, 201);
+    assert.equal((await call(h, a.token, 'GET', '/exercises/custom')).json()[0].name, 'Landmine Press');
+    const post = (b: unknown) => call(h, a.token, 'POST', '/exercises/custom', b);
+    assert.equal((await post(customExercise('x1', { name: '' }))).statusCode, 400);
+    assert.equal((await post(customExercise('x1', { muscleGroup: 'wings' }))).statusCode, 400);
+    assert.equal((await post(customExercise('x1', { equipment: 'jetpack' }))).statusCode, 400);
+    assert.equal((await post(customExercise('x1', { repRange: [12, 8] }))).statusCode, 400);
+    assert.equal((await post(customExercise('x1', { startKg: -1 }))).statusCode, 400);
+    assert.equal((await post(customExercise('x1', { video: { youtubeId: 'aaaaaaaaaaa', title: 'x' } }))).statusCode, 400);
+    assert.equal((await call(h, a.token, 'DELETE', '/exercises/custom/custom-e1')).statusCode, 204);
+    assert.deepEqual((await call(h, a.token, 'GET', '/exercises/custom')).json(), []);
+  });
+
+  it("never shows or changes another user's routines and exercises", async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    const b = await signUp(h, 'b@example.com');
+    await call(h, b.token, 'POST', '/routines', routine('shared', { name: "B's routine" }));
+    await call(h, b.token, 'POST', '/exercises/custom', customExercise('shared-ex', { name: "B's move" }));
+    assert.deepEqual((await call(h, a.token, 'GET', '/routines')).json(), []);
+    assert.deepEqual((await call(h, a.token, 'GET', '/exercises/custom')).json(), []);
+    await call(h, a.token, 'DELETE', '/routines/shared');
+    await call(h, a.token, 'DELETE', '/exercises/custom/shared-ex');
+    assert.equal((await call(h, b.token, 'GET', '/routines')).json().length, 1);
+    assert.equal((await call(h, b.token, 'GET', '/exercises/custom')).json().length, 1);
+    // A reusing B's ids makes A's own copies.
+    await call(h, a.token, 'POST', '/routines', routine('shared', { name: "A's routine" }));
+    assert.equal((await call(h, b.token, 'GET', '/routines')).json()[0].name, "B's routine");
+  });
+
+  it('removes them with the account', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    await call(h, a.token, 'POST', '/routines', routine());
+    await call(h, a.token, 'POST', '/exercises/custom', customExercise());
+    await h.db.run('DELETE FROM users WHERE id = ?', [a.id]);
+    for (const table of ['routines', 'custom_exercises']) {
+      assert.equal((await h.db.get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`))!.n, 0);
+    }
+  });
+});
+
 describe('per-user isolation', () => {
   it("user A can never read or modify user B's data", async () => {
     const h = await setup();
@@ -400,7 +517,7 @@ describe('migrations', () => {
 
     const second = await openDatabase({ path }); // runs the migration check again
     assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM users'))!.n, 1);
-    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 5);
+    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 6);
     // Timestamps are far beyond 32 bits and come back as plain numbers.
     assert.equal((await second.get<{ created_at: number }>('SELECT created_at FROM users'))!.created_at, 1_793_542_000_000);
     await second.close();

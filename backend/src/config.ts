@@ -16,10 +16,16 @@ const schema = z.object({
   DATABASE_PATH: z.string().default('./data/pglite'),
   /** Signs access tokens. Required, at least 32 characters, never committed. */
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().positive().default(15 * 60),
+  ACCESS_TOKEN_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   /** Comma-separated browser origins allowed to call the API (the Expo web dev server). */
   CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:8090'),
+  /** Requests one client (IP) may make per minute across the whole API. */
+  RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(300),
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   /** Server-side only. Without it the coach answers from built-in rules. Never sent to the app. */
   GEMINI_API_KEY: z.string().optional(),
@@ -31,7 +37,11 @@ const schema = z.object({
   MAIL_FROM: z.string().optional(),
   /** AI chat messages one user may send per hour. */
   AI_CHAT_PER_HOUR: z.coerce.number().int().positive().default(20),
-  LOGIN_WINDOW_SEC: z.coerce.number().int().positive().default(15 * 60),
+  LOGIN_WINDOW_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60),
 });
 
 export type Config = z.infer<typeof schema>;

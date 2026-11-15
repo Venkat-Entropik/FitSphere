@@ -17,13 +17,17 @@ const MAX_CODE_ATTEMPTS = 5;
 const forgotBody = z.object({ email });
 const resetBody = z.object({
   email,
-  code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code'),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Enter the 6-digit code'),
   password: newPassword,
 });
 const deleteBody = z.object({ password: z.string().min(1, 'Password is required').max(128) });
 
 /** Bound to the user so a code can't be replayed against another account, and never stored in plain text. */
-const hashCode = (userId: string, code: string) => createHash('sha256').update(`${userId}:${code}`).digest('hex');
+const hashCode = (userId: string, code: string) =>
+  createHash('sha256').update(`${userId}:${code}`).digest('hex');
 
 function sameHash(a: string, b: string): boolean {
   const x = Buffer.from(a, 'hex');
@@ -60,9 +64,17 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
     const at = now();
     const address = parsed.data.email;
 
-    const blocked = Math.max(forgotIp.retryAfterSec(request.ip, at), forgotEmail.retryAfterSec(address, at));
+    const blocked = Math.max(
+      forgotIp.retryAfterSec(request.ip, at),
+      forgotEmail.retryAfterSec(address, at),
+    );
     if (blocked > 0) {
-      return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', 'Too many reset requests. Try again later.');
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        'Too many reset requests. Try again later.',
+      );
     }
     forgotIp.recordFailure(request.ip, at); // counts every request, known account or not
     forgotEmail.recordFailure(address, at);
@@ -70,7 +82,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
     const user = await users.findUserByEmail(address);
     if (user) {
       const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-      await users.putResetCode({ userId: user.id, codeHash: hashCode(user.id, code), expiresAt: at + RESET_TTL_MS, now: at });
+      await users.putResetCode({
+        userId: user.id,
+        codeHash: hashCode(user.id, code),
+        expiresAt: at + RESET_TTL_MS,
+        now: at,
+      });
       sendInBackground({
         to: user.email,
         subject: 'Your FitSphere password reset code',
@@ -78,7 +95,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
       });
     }
     // Same answer whether or not the account exists.
-    return reply.status(202).send({ message: 'If an account exists for that email, we sent a reset code.' });
+    return reply
+      .status(202)
+      .send({ message: 'If an account exists for that email, we sent a reset code.' });
   });
 
   app.post('/auth/reset-password', async (request, reply) => {
@@ -90,13 +109,24 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
     const key = `${request.ip}|${address}`;
     const blocked = resetFailures.retryAfterSec(key, at);
     if (blocked > 0) {
-      return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', 'Too many attempts. Try again later.');
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        'Too many attempts. Try again later.',
+      );
     }
     const invalid = () => {
       resetFailures.recordFailure(key, at);
-      return fail(reply, 400, 'invalid_code', 'That code is invalid or has expired. Request a new one.', {
-        fieldErrors: { code: 'That code is invalid or has expired.' },
-      });
+      return fail(
+        reply,
+        400,
+        'invalid_code',
+        'That code is invalid or has expired. Request a new one.',
+        {
+          fieldErrors: { code: 'That code is invalid or has expired.' },
+        },
+      );
     };
 
     const user = await users.findUserByEmail(address);
@@ -134,13 +164,20 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps): 
 
     const blocked = deleteFailures.retryAfterSec(userId, at);
     if (blocked > 0) {
-      return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', 'Too many attempts. Try again later.');
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        'Too many attempts. Try again later.',
+      );
     }
     const user = (await users.findUserById(userId))!;
     // 403, not 401: the app treats 401 as an expired session and would try to refresh and retry.
     if (!(await verifyPassword(parsed.data.password, user.passwordHash))) {
       deleteFailures.recordFailure(userId, at);
-      return fail(reply, 403, 'invalid_credentials', 'Incorrect password.', { fieldErrors: { password: 'Incorrect password.' } });
+      return fail(reply, 403, 'invalid_credentials', 'Incorrect password.', {
+        fieldErrors: { password: 'Incorrect password.' },
+      });
     }
 
     await users.deleteUser(userId);

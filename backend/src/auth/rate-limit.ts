@@ -1,3 +1,5 @@
+const MAX_TRACKED_KEYS = 10_000;
+
 interface Entry {
   failures: number;
   windowStart: number;
@@ -34,6 +36,10 @@ export function createLoginLimiter(maxAttempts: number, windowSec: number): Logi
       return Math.max(1, Math.ceil((entry.windowStart + windowMs - now) / 1000));
     },
     recordFailure(key, now = Date.now()) {
+      // Drop windows that have ended once the table gets large, so a flood of distinct clients can't grow it forever.
+      if (entries.size >= MAX_TRACKED_KEYS) {
+        for (const [k, e] of entries) if (now - e.windowStart >= windowMs) entries.delete(k);
+      }
       const entry = current(key, now) ?? { failures: 0, windowStart: now };
       entries.set(key, { ...entry, failures: entry.failures + 1 });
     },

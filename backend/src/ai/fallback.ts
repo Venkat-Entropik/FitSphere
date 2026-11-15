@@ -11,7 +11,13 @@ export interface CoachReply {
 
 export interface CoachPlan {
   rpe: number;
-  exercises: { name: string; prescription: string; load: string; loadNote: string; tone: 'progress' | 'neutral' | 'cue' }[];
+  exercises: {
+    name: string;
+    prescription: string;
+    load: string;
+    loadNote: string;
+    tone: 'progress' | 'neutral' | 'cue';
+  }[];
 }
 
 const SPLITS: Record<number, string> = {
@@ -44,15 +50,21 @@ export function ruleReply(question: string, c: CoachContext): CoachReply {
     };
   }
   if (/\b(progress|bench|squat|deadlift|press|lift|pr)\b/.test(q)) {
-    const lifts = c.topLifts.slice(0, 3).map((l) => `${l.name} ${l.kg} kg x ${l.reps}`).join(', ');
-    const change = c.week.prevVolumeKg > 0 ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 100) : null;
+    const lifts = c.topLifts
+      .slice(0, 3)
+      .map((l) => `${l.name} ${l.kg} kg x ${l.reps}`)
+      .join(', ');
+    const change =
+      c.week.prevVolumeKg > 0
+        ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 100)
+        : null;
     return {
       text: `${lifts ? `Your best recent sets: ${lifts}. ` : 'I have no lifts logged yet. '}${change === null ? '' : `Lifting volume is **${change >= 0 ? '+' : ''}${change}%** versus last week. `}If every set reaches the top of the rep range with good form, add the smallest weight jump next session.`,
     };
   }
   if (/\b(mobility|stretch|recover|recovery|sore|warm)/.test(q)) {
     return {
-      text: 'Try 15 minutes: **thoracic rotations** (2x8 per side), **hip 90/90 switches** (2x8), **cat-cow** (1x10), **world\'s greatest stretch** (2x5 per side), then 2 minutes of easy nasal breathing. If pain persists, see a qualified professional.',
+      text: "Try 15 minutes: **thoracic rotations** (2x8 per side), **hip 90/90 switches** (2x8), **cat-cow** (1x10), **world's greatest stretch** (2x5 per side), then 2 minutes of easy nasal breathing. If pain persists, see a qualified professional.",
     };
   }
   if (/\b(weight|fat|lose|gain|calorie|kcal|diet)\b/.test(q)) {
@@ -69,9 +81,12 @@ export function ruleReply(question: string, c: CoachContext): CoachReply {
 export function dashboardInsight(c: CoachContext): string {
   const done = c.week.workouts + c.week.runs;
   const target = c.profile.daysPerWeek;
-  if (c.daysSinceLastSession === null) return 'Log your first session to unlock personalised suggestions. Start with an easy full-body workout.';
-  if (done >= target) return `You have hit **${done}/${target}** sessions this week. Take a recovery day or light mobility work.`;
-  if (c.daysSinceLastSession >= 3) return `It has been **${c.daysSinceLastSession} days** since your last session. A moderate workout today will get your week back on track (${done}/${target} so far).`;
+  if (c.daysSinceLastSession === null)
+    return 'Log your first session to unlock personalised suggestions. Start with an easy full-body workout.';
+  if (done >= target)
+    return `You have hit **${done}/${target}** sessions this week. Take a recovery day or light mobility work.`;
+  if (c.daysSinceLastSession >= 3)
+    return `It has been **${c.daysSinceLastSession} days** since your last session. A moderate workout today will get your week back on track (${done}/${target} so far).`;
   return `You are at **${done}/${target}** sessions this week. ${c.daysSinceLastSession === 0 ? 'Good work today; keep tomorrow lighter if you feel tired.' : 'You are recovered enough for a solid session today.'}`;
 }
 
@@ -79,14 +94,24 @@ export function nutritionTip(c: CoachContext): string {
   const today = c.nutrition.at(-1);
   const target = Math.round(c.profile.weightKg * 1.6);
   const have = today?.protein ?? 0;
-  if (!today || today.meals === 0) return `Nothing logged yet today. Aim for about **${target} g of protein** across your meals.`;
-  if (have < target) return `You are at **${have} g** of **${target} g** protein. Add a protein-rich meal or snack to close the gap.`;
+  if (!today || today.meals === 0)
+    return `Nothing logged yet today. Aim for about **${target} g of protein** across your meals.`;
+  if (have < target)
+    return `You are at **${have} g** of **${target} g** protein. Add a protein-rich meal or snack to close the gap.`;
   return `Protein is on track at **${have} g**. Keep fluids up (**${today.hydrationMl} ml** so far).`;
 }
 
 export function overviewSummary(c: CoachContext): string {
-  const change = c.week.prevVolumeKg > 0 ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 100) : null;
-  const rec = c.daysSinceLastSession === null ? 'No sessions logged yet.' : c.daysSinceLastSession >= 2 ? 'You are well recovered.' : 'You are still recovering from your last session.';
+  const change =
+    c.week.prevVolumeKg > 0
+      ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 100)
+      : null;
+  const rec =
+    c.daysSinceLastSession === null
+      ? 'No sessions logged yet.'
+      : c.daysSinceLastSession >= 2
+        ? 'You are well recovered.'
+        : 'You are still recovering from your last session.';
   return `${rec} This week: **${c.week.workouts}** lifting ${c.week.workouts === 1 ? 'session' : 'sessions'} and **${c.week.runs}** ${c.week.runs === 1 ? 'run' : 'runs'}${change === null ? '' : `, lifting volume **${change >= 0 ? '+' : ''}${change}%** versus last week`}. Prioritise ${dashboardPriority(c)} today.`;
 }
 

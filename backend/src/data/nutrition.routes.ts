@@ -5,9 +5,20 @@ import type { FastifyInstance } from 'fastify';
 import { fail, validationFailure } from '../http.js';
 import type { DataDeps } from './profile.routes.js';
 import type { NutritionRepository } from './nutrition.repository.js';
-import { dateQuery, foodBody, idParams, MAX_MEALS_PER_DAY, rangeQuery, waterBody } from './schemas.js';
+import {
+  dateQuery,
+  foodBody,
+  idParams,
+  MAX_MEALS_PER_DAY,
+  rangeQuery,
+  waterBody,
+} from './schemas.js';
 
-export function registerNutritionRoutes(app: FastifyInstance, nutrition: NutritionRepository, { now }: DataDeps): void {
+export function registerNutritionRoutes(
+  app: FastifyInstance,
+  nutrition: NutritionRepository,
+  { now }: DataDeps,
+): void {
   const auth = { preHandler: app.authenticate };
 
   app.get('/nutrition/daily', auth, async (request, reply) => {

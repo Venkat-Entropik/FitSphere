@@ -10,7 +10,11 @@ export interface DataDeps {
 
 const utcDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-export function registerProfileRoutes(app: FastifyInstance, profiles: ProfileRepository, { now }: DataDeps): void {
+export function registerProfileRoutes(
+  app: FastifyInstance,
+  profiles: ProfileRepository,
+  { now }: DataDeps,
+): void {
   const auth = { preHandler: app.authenticate };
 
   app.get('/profile', auth, async (request) => profiles.get(request.userId!, now()));
@@ -36,6 +40,10 @@ export function registerProfileRoutes(app: FastifyInstance, profiles: ProfileRep
     if (!parsed.success) return validationFailure(reply, parsed.error);
     const at = now();
     const { id, dateKey, ...rest } = parsed.data;
-    return profiles.logWeight(request.userId!, { id: id ?? `weight-${at}`, dateKey: dateKey ?? utcDate(at), ...rest }, at);
+    return profiles.logWeight(
+      request.userId!,
+      { id: id ?? `weight-${at}`, dateKey: dateKey ?? utcDate(at), ...rest },
+      at,
+    );
   });
 }

@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { z } from 'zod';
 
 import { registerAccountRoutes } from './auth/account.routes.js';
+import { createLoginLimiter } from './auth/rate-limit.js';
 import { createAuthRepository } from './auth/auth.repository.js';
 import { registerAuthRoutes } from './auth/auth.routes.js';
 import { createAiService } from './ai/ai.service.js';
@@ -10,6 +11,9 @@ import { createCoachRepository } from './ai/coach.repository.js';
 import { registerCoachRoutes } from './ai/coach.routes.js';
 import { createGeminiProvider } from './ai/gemini.provider.js';
 import type { AiProvider } from './ai/provider.js';
+import { createCustomExerciseStore, createRoutineStore } from './data/library.repository.js';
+import { registerFoodRoutes } from './data/foods.routes.js';
+import { registerLibraryRoutes } from './data/library.routes.js';
 import { createNutritionRepository } from './data/nutrition.repository.js';
 import { registerNutritionRoutes } from './data/nutrition.routes.js';
 import { createProfileRepository } from './data/profile.repository.js';
@@ -20,10 +24,19 @@ import { createTokenService } from './auth/tokens.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { createFallbackMailer, createResendMailer, type Mailer } from './mail/mailer.js';
-import type { activityBody, workoutBody } from './data/schemas.js';
+import {
+  MAX_CUSTOM_EXERCISES,
+  MAX_ROUTINES,
+  type activityBody,
+  type customExerciseBody,
+  type routineBody,
+  type workoutBody,
+} from './data/schemas.js';
 
 type WorkoutRecord = z.infer<typeof workoutBody>;
 type ActivityRecord = z.infer<typeof activityBody>;
+type RoutineRecord = z.infer<typeof routineBody>;
+type CustomExerciseRecord = z.infer<typeof customExerciseBody>;
 
 export interface AppOptions {
   config: Config;
@@ -35,7 +48,13 @@ export interface AppOptions {
   mailer?: Mailer;
 }
 
-export async function buildApp({ config, db, now, ai, mailer }: AppOptions): Promise<FastifyInstance> {
+export async function buildApp({
+  config,
+  db,
+  now,
+  ai,
+  mailer,
+}: AppOptions): Promise<FastifyInstance> {
   // Bodies are small by design (routes are downsampled to ≤200 points), so cap them well below Fastify's 1 MB.
   const app = Fastify({
     // Request logs carry method, path and status only: never bodies, headers or tokens. Silent in tests.
@@ -46,8 +65,35 @@ export async function buildApp({ config, db, now, ai, mailer }: AppOptions): Pro
   const clock = now ?? Date.now;
 
   await app.register(cors, {
-    origin: config.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
+    origin: config.CORS_ORIGINS.split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
+  // A blunt per-client ceiling over everything, on top of the stricter limits on sign-in and AI routes.
+  const requestLimiter = createLoginLimiter(config.RATE_LIMIT_PER_MIN, 60);
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.method === 'OPTIONS' || request.url === '/health') return;
+    const at = clock();
+    const wait = requestLimiter.retryAfterSec(request.ip, at);
+    if (wait > 0) {
+      return reply.header('Retry-After', wait).status(429).send({
+        message: 'Too many requests. Slow down and try again shortly.',
+        code: 'rate_limited',
+      });
+    }
+    requestLimiter.recordFailure(request.ip, at); // counts every request
+  });
+
+  // Responses carry personal data: never cache them, and never let a browser guess content types.
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('Referrer-Policy', 'no-referrer');
+    if (config.NODE_ENV === 'production') {
+      reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
   });
 
   app.get('/health', async () => ({ status: 'ok' }));
@@ -66,14 +112,18 @@ export async function buildApp({ config, db, now, ai, mailer }: AppOptions): Pro
     mailer ??
     (config.RESEND_API_KEY && config.MAIL_FROM
       ? createResendMailer({ apiKey: config.RESEND_API_KEY, from: config.MAIL_FROM })
-      : createFallbackMailer({ development: config.NODE_ENV === 'development', log: (line) => app.log.warn(line) }));
+      : createFallbackMailer({
+          development: config.NODE_ENV === 'development',
+          log: (line) => app.log.warn(line),
+        }));
   registerAccountRoutes(app, {
     config,
     users: createAuthRepository(db),
     mailer: sender,
     now,
     // Only the error class is logged: provider errors and messages can contain the address or code.
-    onMailError: (error) => app.log.warn({ err: error instanceof Error ? error.name : 'unknown' }, 'email send failed'),
+    onMailError: (error) =>
+      app.log.warn({ err: error instanceof Error ? error.name : 'unknown' }, 'email send failed'),
   });
 
   // Every data route authenticates and scopes by the token's user id; no route accepts one from the client.
@@ -83,22 +133,44 @@ export async function buildApp({ config, db, now, ai, mailer }: AppOptions): Pro
   const nutrition = createNutritionRepository(db);
   registerRecordRoutes(app, { workouts, activities });
   registerNutritionRoutes(app, nutrition, { now: clock });
+  registerFoodRoutes(app);
+  registerLibraryRoutes(
+    app,
+    {
+      routines: createRoutineStore<RoutineRecord>(db, MAX_ROUTINES),
+      customExercises: createCustomExerciseStore<CustomExerciseRecord>(db, MAX_CUSTOM_EXERCISES),
+    },
+    { now: clock },
+  );
 
   // The model key lives only on the server. Without one (or if the model fails) the coach uses rules.
   const provider =
     ai !== undefined
       ? ai
       : config.GEMINI_API_KEY
-        ? createGeminiProvider({ apiKey: config.GEMINI_API_KEY, model: config.GEMINI_MODEL, timeoutMs: config.AI_TIMEOUT_MS })
+        ? createGeminiProvider({
+            apiKey: config.GEMINI_API_KEY,
+            model: config.GEMINI_MODEL,
+            timeoutMs: config.AI_TIMEOUT_MS,
+          })
         : null;
   registerCoachRoutes(app, {
     config,
     // Log only that a call failed, never prompts, replies or request bodies.
-    ai: createAiService(provider, (error) => app.log.warn({ err: error instanceof Error ? error.name : 'unknown' }, 'AI provider call failed')),
+    ai: createAiService(provider, (error) =>
+      app.log.warn(
+        { err: error instanceof Error ? error.name : 'unknown' },
+        'AI provider call failed',
+      ),
+    ),
     coach: createCoachRepository(db),
     sources: { profiles, workouts, activities, nutrition },
     now: clock,
   });
+
+  app.setNotFoundHandler((_request, reply) =>
+    reply.status(404).send({ message: 'Not found.', code: 'not_found' }),
+  );
 
   // Never leak internals (stack traces, SQL) to clients.
   app.setErrorHandler((error: unknown, _request, reply) => {

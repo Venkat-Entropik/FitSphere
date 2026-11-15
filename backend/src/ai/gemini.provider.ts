@@ -27,7 +27,11 @@ export function createGeminiProvider({ apiKey, model, timeoutMs }: GeminiOptions
           store: false,
           generation_config: { max_output_tokens: request.maxOutputTokens },
           ...(request.jsonSchema && {
-            response_format: { type: 'text', mime_type: 'application/json', schema: request.jsonSchema },
+            response_format: {
+              type: 'text',
+              mime_type: 'application/json',
+              schema: request.jsonSchema,
+            },
           }),
         });
         const interaction = await Promise.race([call, timeout]);
@@ -37,7 +41,9 @@ export function createGeminiProvider({ apiKey, model, timeoutMs }: GeminiOptions
       } catch (error) {
         if (error instanceof AiProviderError) throw error;
         // Keep only the error class: SDK messages can echo request details.
-        throw new AiProviderError(`Gemini request failed (${error instanceof Error ? error.name : 'unknown'})`);
+        throw new AiProviderError(
+          `Gemini request failed (${error instanceof Error ? error.name : 'unknown'})`,
+        );
       } finally {
         clearTimeout(timer);
       }

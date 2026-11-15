@@ -123,15 +123,15 @@ export function createProfileRepository(db: Db) {
   }
 
   async function upsertWeightRow(q: Db, userId: string, w: WeightInput): Promise<void> {
-    await q.run('DELETE FROM weights WHERE user_id = ? AND (date_key = ? OR id = ?)', [userId, w.dateKey, w.id]);
-    await q.run('INSERT INTO weights (user_id, id, date_key, kg, body_fat, muscle_kg) VALUES (?, ?, ?, ?, ?, ?)', [
+    await q.run('DELETE FROM weights WHERE user_id = ? AND (date_key = ? OR id = ?)', [
       userId,
-      w.id,
       w.dateKey,
-      w.kg,
-      w.bodyFatPercent ?? null,
-      w.muscleKg ?? null,
+      w.id,
     ]);
+    await q.run(
+      'INSERT INTO weights (user_id, id, date_key, kg, body_fat, muscle_kg) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, w.id, w.dateKey, w.kg, w.bodyFatPercent ?? null, w.muscleKg ?? null],
+    );
   }
 
   async function listWeights(q: Db, userId: string): Promise<WeightDto[]> {
@@ -190,12 +190,22 @@ export function createProfileRepository(db: Db) {
      * PUT: replaces the body/goal profile and marks onboarding complete.
      * A changed body weight is a weigh-in, so the weight log stays consistent with the profile.
      */
-    replace: (userId: string, fields: ProfileFields, now: number, today: string, weightId: string) =>
-      write(userId, fields, now, today, weightId, true),
+    replace: (
+      userId: string,
+      fields: ProfileFields,
+      now: number,
+      today: string,
+      weightId: string,
+    ) => write(userId, fields, now, today, weightId, true),
 
     /** PATCH: merges a partial update; does not change the onboarding flag. */
-    patch: (userId: string, patch: ProfilePatchFields, now: number, today: string, weightId: string) =>
-      write(userId, patch, now, today, weightId, false),
+    patch: (
+      userId: string,
+      patch: ProfilePatchFields,
+      now: number,
+      today: string,
+      weightId: string,
+    ) => write(userId, patch, now, today, weightId, false),
 
     listWeights: (userId: string) => listWeights(db, userId),
 
@@ -204,9 +214,16 @@ export function createProfileRepository(db: Db) {
       return db.transaction(async (tx) => {
         await ensure(tx, userId, now);
         await upsertWeightRow(tx, userId, input);
-        const latest = await tx.get<{ kg: number }>('SELECT kg FROM weights WHERE user_id = ? ORDER BY date_key DESC LIMIT 1', [userId]);
+        const latest = await tx.get<{ kg: number }>(
+          'SELECT kg FROM weights WHERE user_id = ? ORDER BY date_key DESC LIMIT 1',
+          [userId],
+        );
         if (latest) {
-          await tx.run('UPDATE profiles SET weight_kg = ?, updated_at = ? WHERE user_id = ?', [latest.kg, now, userId]);
+          await tx.run('UPDATE profiles SET weight_kg = ?, updated_at = ? WHERE user_id = ?', [
+            latest.kg,
+            now,
+            userId,
+          ]);
         }
         return listWeights(tx, userId);
       });

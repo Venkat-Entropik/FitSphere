@@ -17,9 +17,13 @@ export const dateKey = z
   }, 'Not a real date');
 
 const epochMs = z.number().int().min(0).max(8_640_000_000_000_000);
-const text = (max: number) => z.string().trim().min(1, 'Required').max(max, `Keep this under ${max} characters`);
+const text = (max: number) =>
+  z.string().trim().min(1, 'Required').max(max, `Keep this under ${max} characters`);
 const num = (min: number, max: number, label: string) =>
-  z.number().min(min, `${label} must be at least ${min}`).max(max, `${label} must be at most ${max}`);
+  z
+    .number()
+    .min(min, `${label} must be at least ${min}`)
+    .max(max, `${label} must be at most ${max}`);
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +34,11 @@ export const onboardingProfileShape = {
   weightKg: num(30, 250, 'Weight'),
   targetKg: num(30, 250, 'Target'),
   experience: z.enum(['beginner', 'intermediate', 'advanced']),
-  daysPerWeek: z.number().int('Use a whole number of days').min(1, 'Train at least 1 day').max(7, 'At most 7 days'),
+  daysPerWeek: z
+    .number()
+    .int('Use a whole number of days')
+    .min(1, 'Train at least 1 day')
+    .max(7, 'At most 7 days'),
 };
 
 export const profileBody = z.object(onboardingProfileShape).strict();
@@ -87,7 +95,10 @@ export const workoutBody = z
     source: z.enum(['user', 'sample']),
   })
   .strict()
-  .refine((w) => w.endedAt >= w.startedAt, { message: 'A workout cannot end before it starts', path: ['endedAt'] });
+  .refine((w) => w.endedAt >= w.startedAt, {
+    message: 'A workout cannot end before it starts',
+    path: ['endedAt'],
+  });
 
 // ── Activities ───────────────────────────────────────────────────────────────
 
@@ -116,12 +127,53 @@ export const activityBody = z
       )
       .max(1000),
     route: z
-      .array(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).strict())
+      .array(
+        z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).strict(),
+      )
       .max(200, 'Routes are limited to 200 points'),
     source: z.enum(['user', 'sample']),
   })
   .strict()
-  .refine((a) => a.endedAt >= a.startedAt, { message: 'An activity cannot end before it starts', path: ['endedAt'] });
+  .refine((a) => a.endedAt >= a.startedAt, {
+    message: 'An activity cannot end before it starts',
+    path: ['endedAt'],
+  });
+
+// ── Routines and custom exercises ────────────────────────────────────────────
+
+export const MAX_ROUTINES = 50;
+export const MAX_CUSTOM_EXERCISES = 150;
+
+export const routineBody = z
+  .object({
+    id,
+    name: text(60),
+    exercises: z
+      .array(z.object({ exerciseId: id, sets: z.number().int().min(1).max(10) }).strict())
+      .min(1, 'Add at least one exercise')
+      .max(30, 'A routine can have at most 30 exercises'),
+    createdAt: epochMs,
+    updatedAt: epochMs,
+  })
+  .strict();
+
+export const customExerciseBody = z
+  .object({
+    id,
+    name: text(60),
+    muscleGroup,
+    muscles: text(80),
+    equipment: z.enum(['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight']),
+    category: text(40),
+    repRange: z.tuple([z.number().int().min(1).max(100), z.number().int().min(1).max(100)]),
+    incrementKg: z.number().min(0.25).max(25),
+    startKg: z.number().min(0).max(500),
+  })
+  .strict()
+  .refine((e) => e.repRange[0] <= e.repRange[1], {
+    message: 'Minimum reps cannot exceed maximum reps',
+    path: ['repRange'],
+  });
 
 // ── Nutrition ────────────────────────────────────────────────────────────────
 
@@ -154,10 +206,15 @@ export const MAX_RANGE_DAYS = 62;
 export const rangeQuery = z
   .object({ from: dateKey, to: dateKey })
   .refine((r) => r.from <= r.to, { message: '`from` must not be after `to`', path: ['from'] })
-  .refine((r) => (Date.parse(`${r.to}T00:00:00Z`) - Date.parse(`${r.from}T00:00:00Z`)) / 86_400_000 < MAX_RANGE_DAYS, {
-    message: `Ask for at most ${MAX_RANGE_DAYS} days at a time`,
-    path: ['to'],
-  });
+  .refine(
+    (r) =>
+      (Date.parse(`${r.to}T00:00:00Z`) - Date.parse(`${r.from}T00:00:00Z`)) / 86_400_000 <
+      MAX_RANGE_DAYS,
+    {
+      message: `Ask for at most ${MAX_RANGE_DAYS} days at a time`,
+      path: ['to'],
+    },
+  );
 export const idParams = z.object({ id });
 export const MAX_MEALS_PER_DAY = 50;
 export const MAX_WATER_ML = 10_000;

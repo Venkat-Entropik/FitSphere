@@ -55,7 +55,11 @@ export interface HistoryTurn {
 }
 
 /** User content is fenced and labelled as data so the model can tell it apart from instructions. */
-export function chatPrompt(context: CoachContext, history: HistoryTurn[], question: string): string {
+export function chatPrompt(
+  context: CoachContext,
+  history: HistoryTurn[],
+  question: string,
+): string {
   const turns = history
     .slice(-MAX_HISTORY_TURNS)
     .map((t) => `${t.role === 'user' ? 'Athlete' : 'Coach'}: ${t.text}`)
@@ -72,7 +76,7 @@ export type InsightKind = 'dashboard' | 'nutrition' | 'overview';
 
 const INSIGHT_TASKS: Record<InsightKind, string> = {
   dashboard:
-    'Write one short suggestion (max 35 words) for the athlete\'s home screen about what to do today, based on this week\'s training versus their plan and recovery.',
+    "Write one short suggestion (max 35 words) for the athlete's home screen about what to do today, based on this week's training versus their plan and recovery.",
   nutrition:
     'Write one short nutrition tip (max 35 words) for today, based on their protein and calories so far versus their goal and body weight (protein of about 1.6-2.2 g per kg suits most lifters).',
   overview:

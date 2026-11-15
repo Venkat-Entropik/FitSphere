@@ -42,4 +42,5 @@ export function createTokenService(secret: string, accessTtlSec: number): TokenS
 
 /** Refresh tokens are opaque random strings; only their SHA-256 hash is stored. */
 export const newRefreshToken = (): string => randomBytes(32).toString('base64url');
-export const hashRefreshToken = (token: string): string => createHash('sha256').update(token).digest('hex');
+export const hashRefreshToken = (token: string): string =>
+  createHash('sha256').update(token).digest('hex');

@@ -85,7 +85,13 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
 
   app.post('/auth/register', async (request, reply) => {
     const blocked = signupLimiter.retryAfterSec(request.ip, now());
-    if (blocked > 0) return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', 'Too many sign-up attempts. Try again later.');
+    if (blocked > 0)
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        'Too many sign-up attempts. Try again later.',
+      );
     signupLimiter.recordFailure(request.ip, now()); // counts every attempt
 
     const parsed = registerBody.safeParse(request.body);
@@ -98,7 +104,10 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       passwordHash: await hashPassword(parsed.data.password),
       now: now(),
     });
-    if (!created) return fail(reply, 409, 'email_taken', 'An account with this email already exists.', { fieldErrors: { email: 'An account with this email already exists.' } });
+    if (!created)
+      return fail(reply, 409, 'email_taken', 'An account with this email already exists.', {
+        fieldErrors: { email: 'An account with this email already exists.' },
+      });
 
     await deps.onUserCreated?.(created);
     return reply.status(201).send(await issueSession(created));
@@ -111,11 +120,18 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const key = `${request.ip}|${parsed.data.email}`;
     const blocked = loginLimiter.retryAfterSec(key, now());
     if (blocked > 0) {
-      return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', `Too many failed attempts. Try again in ${Math.ceil(blocked / 60)} min.`);
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        `Too many failed attempts. Try again in ${Math.ceil(blocked / 60)} min.`,
+      );
     }
 
     const user = await users.findUserByEmail(parsed.data.email);
-    const ok = user ? await verifyPassword(parsed.data.password, user.passwordHash) : await verifyAgainstDecoy(parsed.data.password);
+    const ok = user
+      ? await verifyPassword(parsed.data.password, user.passwordHash)
+      : await verifyAgainstDecoy(parsed.data.password);
     if (!user || !ok) {
       loginLimiter.recordFailure(key, now());
       return fail(reply, 401, 'invalid_credentials', 'Invalid email or password.');
@@ -128,17 +144,40 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
   /** Rotates the refresh token. Replaying an already-used one ends every session for that user. */
   app.post('/auth/refresh', async (request, reply) => {
     const parsed = refreshBody.safeParse(request.body);
-    if (!parsed.success) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
+    if (!parsed.success)
+      return fail(
+        reply,
+        401,
+        'invalid_refresh_token',
+        'Your session has expired. Please sign in again.',
+      );
 
     const stored = await users.findRefreshToken(hashRefreshToken(parsed.data.refreshToken));
     const at = now();
-    if (!stored) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
+    if (!stored)
+      return fail(
+        reply,
+        401,
+        'invalid_refresh_token',
+        'Your session has expired. Please sign in again.',
+      );
     if (stored.revokedAt !== null) {
       await users.revokeAllForUser(stored.userId, at);
-      return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
+      return fail(
+        reply,
+        401,
+        'invalid_refresh_token',
+        'Your session has expired. Please sign in again.',
+      );
     }
     const user = await users.findUserById(stored.userId);
-    if (stored.expiresAt <= at || !user) return fail(reply, 401, 'invalid_refresh_token', 'Your session has expired. Please sign in again.');
+    if (stored.expiresAt <= at || !user)
+      return fail(
+        reply,
+        401,
+        'invalid_refresh_token',
+        'Your session has expired. Please sign in again.',
+      );
 
     const session = await issueSession(user);
     const next = await users.findRefreshToken(hashRefreshToken(session.tokens.refreshToken));

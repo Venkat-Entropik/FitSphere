@@ -12,7 +12,10 @@ export interface Db {
   /** Every row of a query. */
   all<T = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<T[]>;
   /** The first row, or undefined. */
-  get<T = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<T | undefined>;
+  get<T = Record<string, unknown>>(
+    sql: string,
+    params?: readonly unknown[],
+  ): Promise<T | undefined>;
   /** Runs a statement and returns how many rows it changed. */
   run(sql: string, params?: readonly unknown[]): Promise<number>;
   /** Runs one or more statements with no parameters (schema changes). */
@@ -38,7 +41,12 @@ export function toPositional(sql: string): string {
 // Epoch milliseconds and counts are BIGINT; return them as numbers (they are far below 2^53).
 pg.types.setTypeParser(pg.types.builtins.INT8, (value) => Number(value));
 
-type Queryable = { query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[]; rowCount?: number | null; affectedRows?: number }> };
+type Queryable = {
+  query: (
+    text: string,
+    params?: unknown[],
+  ) => Promise<{ rows: unknown[]; rowCount?: number | null; affectedRows?: number }>;
+};
 
 function wrap(
   q: Queryable,
@@ -295,6 +303,27 @@ const MIGRATIONS: { id: number; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 6,
+    sql: `
+      -- The user's own workout routines and the exercises they defined themselves.
+      CREATE TABLE routines (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        id         TEXT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        data       TEXT NOT NULL,
+        PRIMARY KEY (user_id, id)
+      );
+
+      CREATE TABLE custom_exercises (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        id         TEXT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        data       TEXT NOT NULL,
+        PRIMARY KEY (user_id, id)
+      );
+    `,
+  },
 ];
 
 const MIGRATION_LOCK = 727_274;
@@ -303,12 +332,19 @@ async function migrate(db: Db): Promise<void> {
   await db.transaction(async (tx) => {
     // Serialises concurrent starts (e.g. two instances booting during a deploy).
     await tx.get('SELECT pg_advisory_xact_lock(?)', [MIGRATION_LOCK]);
-    await tx.exec('CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, applied_at BIGINT NOT NULL)');
-    const applied = new Set((await tx.all<{ id: number }>('SELECT id FROM schema_migrations')).map((r) => r.id));
+    await tx.exec(
+      'CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, applied_at BIGINT NOT NULL)',
+    );
+    const applied = new Set(
+      (await tx.all<{ id: number }>('SELECT id FROM schema_migrations')).map((r) => r.id),
+    );
     for (const migration of MIGRATIONS) {
       if (applied.has(migration.id)) continue;
       await tx.exec(migration.sql);
-      await tx.run('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)', [migration.id, Date.now()]);
+      await tx.run('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)', [
+        migration.id,
+        Date.now(),
+      ]);
     }
   });
 }

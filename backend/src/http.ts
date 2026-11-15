@@ -2,7 +2,13 @@ import type { FastifyReply } from 'fastify';
 import type { ZodError } from 'zod';
 
 /** `{ message, code, fieldErrors? }` is the error shape the mobile app's ApiError reads. */
-export function fail(reply: FastifyReply, status: number, code: string, message: string, extra: object = {}) {
+export function fail(
+  reply: FastifyReply,
+  status: number,
+  code: string,
+  message: string,
+  extra: object = {},
+) {
   return reply.status(status).send({ message, code, ...extra });
 }
 

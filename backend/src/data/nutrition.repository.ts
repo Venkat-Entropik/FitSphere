@@ -28,7 +28,10 @@ export function createNutritionRepository(db: Db) {
         [userId, dateKey],
       )
     ).map((r) => JSON.parse(r.data) as MealDto);
-    const water = await q.get<{ ml: number }>('SELECT ml FROM nutrition_water WHERE user_id = ? AND date_key = ?', [userId, dateKey]);
+    const water = await q.get<{ ml: number }>(
+      'SELECT ml FROM nutrition_water WHERE user_id = ? AND date_key = ?',
+      [userId, dateKey],
+    );
     return { dateKey, meals, hydrationMl: water?.ml ?? 0 };
   }
 
@@ -41,9 +44,15 @@ export function createNutritionRepository(db: Db) {
      */
     async logMeal(userId: string, dateKey: string, meal: MealDto): Promise<NutritionDayDto | null> {
       return db.transaction(async (tx) => {
-        const existing = await tx.get('SELECT 1 AS one FROM nutrition_foods WHERE user_id = ? AND id = ?', [userId, meal.id]);
+        const existing = await tx.get(
+          'SELECT 1 AS one FROM nutrition_foods WHERE user_id = ? AND id = ?',
+          [userId, meal.id],
+        );
         if (!existing) {
-          const row = await tx.get<{ n: number }>('SELECT COUNT(*) AS n FROM nutrition_foods WHERE user_id = ? AND date_key = ?', [userId, dateKey]);
+          const row = await tx.get<{ n: number }>(
+            'SELECT COUNT(*) AS n FROM nutrition_foods WHERE user_id = ? AND date_key = ?',
+            [userId, dateKey],
+          );
           if ((row?.n ?? 0) >= MAX_MEALS_PER_DAY) return null;
         }
         await tx.run(
@@ -57,7 +66,11 @@ export function createNutritionRepository(db: Db) {
 
     /** Deleting something that is already gone is fine; the day is returned either way. */
     async removeMeal(userId: string, dateKey: string, mealId: string): Promise<NutritionDayDto> {
-      await db.run('DELETE FROM nutrition_foods WHERE user_id = ? AND id = ? AND date_key = ?', [userId, mealId, dateKey]);
+      await db.run('DELETE FROM nutrition_foods WHERE user_id = ? AND id = ? AND date_key = ?', [
+        userId,
+        mealId,
+        dateKey,
+      ]);
       return day(db, userId, dateKey);
     },
 
@@ -65,7 +78,12 @@ export function createNutritionRepository(db: Db) {
      * Adds (or, if negative, removes) water, clamped to 0..MAX_WATER_ML. With an `eventId`, a repeat of the
      * same event changes nothing, so a request retried after a dropped connection is not counted twice.
      */
-    async addWater(userId: string, dateKey: string, ml: number, eventId?: string): Promise<NutritionDayDto> {
+    async addWater(
+      userId: string,
+      dateKey: string,
+      ml: number,
+      eventId?: string,
+    ): Promise<NutritionDayDto> {
       return db.transaction(async (tx) => {
         if (eventId) {
           const fresh = await tx.run(

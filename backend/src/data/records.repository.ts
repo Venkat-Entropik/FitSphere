@@ -5,7 +5,10 @@ import { LIST_LIMIT } from './schemas.js';
  * Workouts and activities are stored as validated JSON documents, with the columns we filter and
  * sort on kept as real columns. Writes are upserts keyed by (user, id), so retries are harmless.
  */
-function createRecordStore<T extends { id: string; startedAt: number }>(db: Db, table: 'workouts' | 'activities') {
+function createRecordStore<T extends { id: string; startedAt: number }>(
+  db: Db,
+  table: 'workouts' | 'activities',
+) {
   return {
     async list(userId: string): Promise<T[]> {
       const rows = await db.all<{ data: string }>(
@@ -25,7 +28,9 @@ function createRecordStore<T extends { id: string; startedAt: number }>(db: Db, 
   };
 }
 
-export type RecordStore<T extends { id: string; startedAt: number }> = ReturnType<typeof createRecordStore<T>>;
+export type RecordStore<T extends { id: string; startedAt: number }> = ReturnType<
+  typeof createRecordStore<T>
+>;
 
 export const createWorkoutRepository = <T extends { id: string; startedAt: number }>(db: Db) =>
   createRecordStore<T>(db, 'workouts');

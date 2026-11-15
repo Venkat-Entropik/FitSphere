@@ -22,7 +22,11 @@ import { id } from '../data/schemas.js';
 
 const sendBody = z
   .object({
-    text: z.string().trim().min(1, 'Type a question').max(MAX_QUESTION_CHARS, `Keep your question under ${MAX_QUESTION_CHARS} characters`),
+    text: z
+      .string()
+      .trim()
+      .min(1, 'Type a question')
+      .max(MAX_QUESTION_CHARS, `Keep your question under ${MAX_QUESTION_CHARS} characters`),
     id: id.optional(),
   })
   .strict();
@@ -36,9 +40,19 @@ const GOAL_LABEL: Record<string, string> = {
 
 const SUGGESTIONS = [
   { id: 'plan', icon: 'event_available', tone: 'lime', text: 'Create my weekly workout plan' },
-  { id: 'protein', icon: 'nutrition', tone: 'cyan', text: 'How much protein should I consume today?' },
+  {
+    id: 'protein',
+    icon: 'nutrition',
+    tone: 'cyan',
+    text: 'How much protein should I consume today?',
+  },
   { id: 'progress', icon: 'query_stats', tone: 'lime', text: 'Analyze my lifting progression' },
-  { id: 'mobility', icon: 'self_improvement', tone: 'violet', text: 'Suggest 15-min recovery mobility' },
+  {
+    id: 'mobility',
+    icon: 'self_improvement',
+    tone: 'violet',
+    text: 'Suggest 15-min recovery mobility',
+  },
 ] as const;
 
 const WEEKDAY = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -58,10 +72,16 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
   const chatLimiter = createLoginLimiter(config.AI_CHAT_PER_HOUR, 3600);
   const insightLimiter = createLoginLimiter(INSIGHT_GENERATIONS_PER_HOUR, 3600);
 
-  const context = (userId: string): Promise<CoachContext> => buildCoachContext(sources, userId, now());
+  const context = (userId: string): Promise<CoachContext> =>
+    buildCoachContext(sources, userId, now());
 
   /** Cached insight text; regenerated when the data changed or the entry is old, within a per-user budget. */
-  async function insightText(userId: string, kind: InsightKind, c: CoachContext, rules: (c: CoachContext) => string) {
+  async function insightText(
+    userId: string,
+    kind: InsightKind,
+    c: CoachContext,
+    rules: (c: CoachContext) => string,
+  ) {
     const fingerprint = createHash('sha256').update(JSON.stringify(c)).digest('hex').slice(0, 16);
     const at = now();
     const cached = await coach.getInsight(userId, kind);
@@ -102,7 +122,12 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
     const at = now();
     const blocked = chatLimiter.retryAfterSec(userId, at);
     if (blocked > 0) {
-      return fail(reply.header('Retry-After', blocked), 429, 'rate_limited', `You have reached the coach message limit. Try again in ${Math.ceil(blocked / 60)} min.`);
+      return fail(
+        reply.header('Retry-After', blocked),
+        429,
+        'rate_limited',
+        `You have reached the coach message limit. Try again in ${Math.ceil(blocked / 60)} min.`,
+      );
     }
     chatLimiter.recordFailure(userId, at); // counts every message
 
@@ -114,7 +139,12 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
 
     const answer = (await ai.chat(c, history, parsed.data.text)) ?? ruleReply(parsed.data.text, c);
 
-    const user = { id: userMessageId, role: 'user' as const, text: parsed.data.text, createdAt: at };
+    const user = {
+      id: userMessageId,
+      role: 'user' as const,
+      text: parsed.data.text,
+      createdAt: at,
+    };
     const assistant = {
       id: `assistant-${randomUUID()}`,
       role: 'assistant' as const,
@@ -136,8 +166,12 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
     const done = c.week.workouts + c.week.runs;
     const since = c.daysSinceLastSession;
     // Rough estimate from time since the last session; labelled "Estimated" in the response.
-    const recovery = since === null ? 100 : since === 0 ? 55 : since === 1 ? 75 : since === 2 ? 90 : 98;
-    const change = c.week.prevVolumeKg > 0 ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 1000) / 10 : 0;
+    const recovery =
+      since === null ? 100 : since === 0 ? 55 : since === 1 ? 75 : since === 2 ? 90 : 98;
+    const change =
+      c.week.prevVolumeKg > 0
+        ? Math.round(((c.week.volumeKg - c.week.prevVolumeKg) / c.week.prevVolumeKg) * 1000) / 10
+        : 0;
 
     const maxLoad = Math.max(...c.week.kcalByDay, 0);
     const days = c.week.kcalByDay.map((load, i) => {
@@ -156,10 +190,25 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
       statusLabel: ai.enabled ? 'Active' : 'Rules mode',
       syncLabel: dayKey(at),
       contextChips: [
-        { id: 'goal', icon: 'fitness_center', label: `Goal: ${GOAL_LABEL[c.profile.goal] ?? c.profile.goal}`, tone: 'lime' },
-        { id: 'weekly', icon: 'calendar_today', label: `Weekly: ${done}/${c.profile.daysPerWeek} Done`, tone: 'cyan' },
+        {
+          id: 'goal',
+          icon: 'fitness_center',
+          label: `Goal: ${GOAL_LABEL[c.profile.goal] ?? c.profile.goal}`,
+          tone: 'lime',
+        },
+        {
+          id: 'weekly',
+          icon: 'calendar_today',
+          label: `Weekly: ${done}/${c.profile.daysPerWeek} Done`,
+          tone: 'cyan',
+        },
         { id: 'recovery', icon: 'vital_signs', label: `Recovery: ${recovery}%`, tone: 'lime' },
-        { id: 'weight', icon: 'monitor_weight', label: `Weight: ${c.profile.weightKg} kg`, tone: 'violet' },
+        {
+          id: 'weight',
+          icon: 'monitor_weight',
+          label: `Weight: ${c.profile.weightKg} kg`,
+          tone: 'violet',
+        },
       ],
       analysis: {
         windowLabel: recovery >= 85 ? 'Optimal Window' : 'Recovering',
@@ -178,12 +227,22 @@ export function registerCoachRoutes(app: FastifyInstance, deps: CoachDeps): void
   });
 
   app.get('/insights/dashboard', auth, async (request) => {
-    const i = await insightText(request.userId!, 'dashboard', await context(request.userId!), dashboardInsight);
+    const i = await insightText(
+      request.userId!,
+      'dashboard',
+      await context(request.userId!),
+      dashboardInsight,
+    );
     return { suggestion: i.text, source: i.source, disclaimer: DISCLAIMER_TEXT };
   });
 
   app.get('/insights/nutrition', auth, async (request) => {
-    const i = await insightText(request.userId!, 'nutrition', await context(request.userId!), nutritionTip);
+    const i = await insightText(
+      request.userId!,
+      'nutrition',
+      await context(request.userId!),
+      nutritionTip,
+    );
     return { tip: i.text, source: i.source, disclaimer: DISCLAIMER_TEXT };
   });
 }

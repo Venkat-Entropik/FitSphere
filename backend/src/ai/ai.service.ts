@@ -47,7 +47,10 @@ export function cleanText(raw: string, max: number): string {
 }
 
 function parseJson(raw: string): unknown {
-  const stripped = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const stripped = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '');
   return JSON.parse(stripped);
 }
 
@@ -74,7 +77,10 @@ export interface AiService {
 }
 
 /** Wraps a provider with prompt building and output validation. Never throws: failures become null. */
-export function createAiService(provider: AiProvider | null, onError: (error: unknown) => void = () => {}): AiService {
+export function createAiService(
+  provider: AiProvider | null,
+  onError: (error: unknown) => void = () => {},
+): AiService {
   return {
     enabled: provider !== null,
 

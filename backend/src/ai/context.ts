@@ -23,7 +23,14 @@ export interface CoachContext {
     experience: string;
     daysPerWeek: number;
   };
-  week: { workouts: number; runs: number; volumeKg: number; prevVolumeKg: number; prs: number; kcalByDay: number[] };
+  week: {
+    workouts: number;
+    runs: number;
+    volumeKg: number;
+    prevVolumeKg: number;
+    prs: number;
+    kcalByDay: number[];
+  };
   daysSinceLastSession: number | null;
   recentWorkouts: { date: string; title: string; volumeKg: number; prs: number }[];
   topLifts: { name: string; kg: number; reps: number }[];
@@ -40,7 +47,11 @@ export interface ContextSources {
   nutrition: NutritionRepository;
 }
 
-export async function buildCoachContext(sources: ContextSources, userId: string, now: number): Promise<CoachContext> {
+export async function buildCoachContext(
+  sources: ContextSources,
+  userId: string,
+  now: number,
+): Promise<CoachContext> {
   const dto = await sources.profiles.get(userId, now);
   const p = dto.profile;
   const identity = dto.identity;
@@ -83,7 +94,8 @@ export async function buildCoachContext(sources: ContextSources, userId: string,
       for (const s of e.sets) {
         const e1rm = s.kg * (1 + s.reps / 30);
         const current = best.get(e.exerciseId);
-        if (s.kg > 0 && (!current || e1rm > current.e1rm)) best.set(e.exerciseId, { name: e.name, kg: s.kg, reps: s.reps, e1rm });
+        if (s.kg > 0 && (!current || e1rm > current.e1rm))
+          best.set(e.exerciseId, { name: e.name, kg: s.kg, reps: s.reps, e1rm });
       }
     }
   }
@@ -112,7 +124,12 @@ export async function buildCoachContext(sources: ContextSources, userId: string,
     recentWorkouts: workouts
       .slice(-5)
       .reverse()
-      .map((w) => ({ date: dayKey(w.startedAt), title: w.title, volumeKg: Math.round(w.volumeKg), prs: w.prCount })),
+      .map((w) => ({
+        date: dayKey(w.startedAt),
+        title: w.title,
+        volumeKg: Math.round(w.volumeKg),
+        prs: w.prCount,
+      })),
     topLifts: [...best.values()]
       .sort((a, b) => b.e1rm - a.e1rm)
       .slice(0, 5)
@@ -142,7 +159,8 @@ export async function buildCoachContext(sources: ContextSources, userId: string,
   };
 }
 
-const pace = (sec: number | null) => (sec === null ? 'n/a' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}/km`);
+const pace = (sec: number | null) =>
+  sec === null ? 'n/a' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}/km`;
 
 /** Plain-text rendering used inside prompts. Numbers only; safe to show to the model as data. */
 export function renderContext(c: CoachContext): string {
@@ -151,7 +169,11 @@ export function renderContext(c: CoachContext): string {
     `Profile: goal=${p.goal}, sex=${p.sex}, age=${p.age}, height=${p.heightCm} cm, weight=${p.weightKg} kg, target=${p.targetKg} kg, experience=${p.experience}, plans ${p.daysPerWeek} training days/week.`,
     `Last 7 days: ${c.week.workouts} lifting sessions, ${c.week.runs} runs, lifting volume ${c.week.volumeKg} kg (previous 7 days: ${c.week.prevVolumeKg} kg), ${c.week.prs} personal records.`,
     `Days since last session: ${c.daysSinceLastSession ?? 'no sessions logged yet'}.`,
-    `Sets per muscle group this week: ${Object.entries(c.muscleSetsThisWeek).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}.`,
+    `Sets per muscle group this week: ${
+      Object.entries(c.muscleSetsThisWeek)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(', ') || 'none'
+    }.`,
     `Recent lifting sessions: ${c.recentWorkouts.map((w) => `${w.date} ${w.title} (${w.volumeKg} kg, ${w.prs} PRs)`).join('; ') || 'none'}.`,
     `Best recent sets (60 days): ${c.topLifts.map((l) => `${l.name} ${l.kg} kg x ${l.reps}`).join('; ') || 'none'}.`,
     `Runs in last 14 days: ${c.runs14.count}, ${c.runs14.km} km total, average pace ${pace(c.runs14.avgPaceSecPerKm)}.`,

@@ -60,11 +60,18 @@ export function createCoachRepository(db: Db) {
     },
 
     async userMessageExists(userId: string, id: string): Promise<boolean> {
-      return !!(await db.get("SELECT 1 AS one FROM coach_messages WHERE user_id = ? AND id = ? AND role = 'user'", [userId, id]));
+      return !!(await db.get(
+        "SELECT 1 AS one FROM coach_messages WHERE user_id = ? AND id = ? AND role = 'user'",
+        [userId, id],
+      ));
     },
 
     /** Stores the question and its answer together, then trims the history to a fixed size. */
-    async saveExchange(userId: string, user: CoachMessageDto, assistant: CoachMessageDto): Promise<void> {
+    async saveExchange(
+      userId: string,
+      user: CoachMessageDto,
+      assistant: CoachMessageDto,
+    ): Promise<void> {
       await db.transaction(async (tx) => {
         const insert = `INSERT INTO coach_messages (user_id, id, role, text, plan, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT (user_id, id) DO NOTHING`;
@@ -87,14 +94,24 @@ export function createCoachRepository(db: Db) {
     },
 
     async getInsight(userId: string, kind: string): Promise<CachedInsight | undefined> {
-      const row = await db.get<{ data: string; created_at: number }>('SELECT data, created_at FROM ai_cache WHERE user_id = ? AND kind = ?', [
-        userId,
-        kind,
-      ]);
-      return row && { ...(JSON.parse(row.data) as Omit<CachedInsight, 'createdAt'>), createdAt: row.created_at };
+      const row = await db.get<{ data: string; created_at: number }>(
+        'SELECT data, created_at FROM ai_cache WHERE user_id = ? AND kind = ?',
+        [userId, kind],
+      );
+      return (
+        row && {
+          ...(JSON.parse(row.data) as Omit<CachedInsight, 'createdAt'>),
+          createdAt: row.created_at,
+        }
+      );
     },
 
-    async putInsight(userId: string, kind: string, insight: Omit<CachedInsight, 'createdAt'>, now: number): Promise<void> {
+    async putInsight(
+      userId: string,
+      kind: string,
+      insight: Omit<CachedInsight, 'createdAt'>,
+      now: number,
+    ): Promise<void> {
       await db.run(
         `INSERT INTO ai_cache (user_id, kind, data, created_at) VALUES (?, ?, ?, ?)
          ON CONFLICT (user_id, kind) DO UPDATE SET data = excluded.data, created_at = excluded.created_at`,
