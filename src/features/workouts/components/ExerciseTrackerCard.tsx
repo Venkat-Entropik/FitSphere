@@ -9,27 +9,80 @@ import type { SessionExercise } from '../types/workout.types';
 import { formatKg } from '../utils/workout.logic';
 import { SetLogTable } from './SetLogTable';
 
-function Stepper({ label, onPress }: { label: string; onPress: () => void }) {
+function RoundButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: 'remove' | 'add';
+  label: string;
+  onPress: () => void;
+}) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
+      hitSlop={6}
       style={({ pressed }) => ({
-        flex: 1,
-        height: 44,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: theme.radius.sm,
-        backgroundColor: pressed ? theme.colors.surfaceBright : theme.colors.surface,
-        transform: [{ scale: pressed ? 0.95 : 1 }],
+        backgroundColor: pressed ? theme.colors.surfaceBright : theme.colors.surfaceHigh,
+        transform: [{ scale: pressed ? 0.92 : 1 }],
       })}
     >
-      <AppText variant="labelUi" weight="semibold">
-        {label}
-      </AppText>
+      <Icon name={icon} size={22} color="onSurface" />
     </Pressable>
+  );
+}
+
+/** "Weight  [-]  12.5 kg  [+]": one target, one row, big touch targets. */
+function AdjustRow({
+  name,
+  value,
+  unit,
+  onMinus,
+  onPlus,
+}: {
+  name: string;
+  value: string;
+  unit: string;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 6,
+        borderRadius: theme.radius.md,
+        backgroundColor: theme.colors.surface,
+      }}
+    >
+      <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
+        {name}
+      </AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <RoundButton icon="remove" label={`Decrease ${name.toLowerCase()}`} onPress={onMinus} />
+        <View style={{ minWidth: 44, alignItems: 'center' }}>
+          <AppText variant="headlineMd" tabular numberOfLines={1}>
+            {value}
+          </AppText>
+          <AppText variant="bodySm" color="onSurfaceVariant">
+            {unit}
+          </AppText>
+        </View>
+        <RoundButton icon="add" label={`Increase ${name.toLowerCase()}`} onPress={onPlus} />
+      </View>
+    </View>
   );
 }
 
@@ -55,6 +108,7 @@ export function ExerciseTrackerCard({
 }: ExerciseTrackerCardProps) {
   const theme = useTheme();
   const canAdjust = activeSetNumber !== null;
+  const activeSet = exercise.sets.find((x) => x.number === activeSetNumber);
   return (
     <Card tone="low" style={{ gap: 16 }}>
       <View
@@ -143,33 +197,26 @@ export function ExerciseTrackerCard({
 
       <SetLogTable sets={exercise.sets} />
 
-      {canAdjust ? (
-        <View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 8,
-            }}
-          >
-            <AppText
-              variant="labelCaps"
-              color="onSurfaceVariant"
-              uppercase
-              style={{ letterSpacing: 0.9 }}
-            >
-              Quick Adjust Target Set {activeSetNumber}
-            </AppText>
-            <AppText variant="labelCaps" color="secondary">
-              Touch Steppers
-            </AppText>
-          </View>
+      {canAdjust && activeSet ? (
+        <View style={{ gap: 8 }}>
+          <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
+            Adjust set {activeSetNumber}
+          </AppText>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Stepper label="-2.5 kg" onPress={() => onAdjustWeight(-1)} />
-            <Stepper label="+2.5 kg" onPress={() => onAdjustWeight(1)} />
-            <Stepper label="-1 rep" onPress={() => onAdjustReps(-1)} />
-            <Stepper label="+1 rep" onPress={() => onAdjustReps(1)} />
+            <AdjustRow
+              name="Weight"
+              value={formatKg(activeSet.kg)}
+              unit="kg"
+              onMinus={() => onAdjustWeight(-1)}
+              onPlus={() => onAdjustWeight(1)}
+            />
+            <AdjustRow
+              name="Reps"
+              value={String(activeSet.reps)}
+              unit="reps"
+              onMinus={() => onAdjustReps(-1)}
+              onPlus={() => onAdjustReps(1)}
+            />
           </View>
         </View>
       ) : null}

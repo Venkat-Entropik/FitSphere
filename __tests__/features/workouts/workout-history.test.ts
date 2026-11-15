@@ -6,9 +6,11 @@ import {
   buildSessionFromPlan,
   buildWorkoutRecord,
   estimateOneRepMax,
+  ESTIMATED_SECONDS_PER_SET,
   estimateWorkoutKcal,
   exerciseSessions,
   filterExercises,
+  MAX_WORKOUT_SECONDS,
   nextPlan,
   personalBests,
   suggestOverload,
@@ -178,6 +180,25 @@ describe('buildWorkoutRecord', () => {
     expect(rec.exercises[0]!.muscleGroup).toBe('chest');
     expect(rec.kcal).toBe(estimateWorkoutKcal(42 * 60 + 15, 68.5));
     expect(rec.source).toBe('user');
+  });
+
+  it('times from when the timer was started, not from when the session was created', () => {
+    const s = { ...session(), startedAt: NOW - 3 * 3600_000, timerStartedAt: NOW - 20 * 60_000 };
+    const rec = buildWorkoutRecord(s, { now: NOW, weightKg: 68.5, catalog: EXERCISE_CATALOG });
+    expect(rec.durationSec).toBe(20 * 60);
+    expect(rec.startedAt).toBe(s.startedAt);
+  });
+
+  it('estimates the duration from logged sets when the timer was never started', () => {
+    const s = { ...session(), startedAt: NOW - 5 * 3600_000, timerStartedAt: null };
+    const rec = buildWorkoutRecord(s, { now: NOW, weightKg: 68.5, catalog: EXERCISE_CATALOG });
+    expect(rec.durationSec).toBe(rec.setsCompleted * ESTIMATED_SECONDS_PER_SET);
+  });
+
+  it('caps the duration at what the server accepts if a timer is left running', () => {
+    const s = { ...session(), timerStartedAt: NOW - 40 * 3600_000 };
+    const rec = buildWorkoutRecord(s, { now: NOW, weightKg: 68.5, catalog: EXERCISE_CATALOG });
+    expect(rec.durationSec).toBe(MAX_WORKOUT_SECONDS);
   });
 
   it('omits exercises with nothing logged', () => {

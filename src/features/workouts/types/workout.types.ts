@@ -35,6 +35,8 @@ export interface ActiveSessionTemplate {
   title: string;
   /** Epoch ms the session began. */
   startedAt: number;
+  /** Epoch ms the person started the timer; null until they do. Absent on sessions saved before the timer was optional. */
+  timerStartedAt?: number | null;
   /** Work completed in exercises before the ones listed below. */
   priorVolumeKg: number;
   priorSetsCompleted: number;
@@ -54,6 +56,7 @@ export interface ActiveSession {
   planId?: string | null;
   title: string;
   startedAt: number;
+  timerStartedAt?: number | null;
   priorVolumeKg: number;
   priorSetsCompleted: number;
   completedExerciseCount: number;

@@ -13,7 +13,7 @@ import type {
   WorkoutPlan,
   WorkoutRecord,
 } from '../types/workout-record.types';
-import { completedSetCount, sessionVolumeKg } from './workout.logic';
+import { completedSetCount, sessionVolumeKg, timerStart } from './workout.logic';
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const roundToStep = (n: number, step: number) => Math.round(n / step) * step;
@@ -23,6 +23,10 @@ export const estimateOneRepMax = (kg: number, reps: number): number =>
   reps <= 1 ? kg : round1(kg * (1 + reps / 30));
 
 const MET_STRENGTH_TRAINING = 5;
+
+/** Used only when the timer was never started: about 2.5 minutes per logged set, work plus rest. */
+export const ESTIMATED_SECONDS_PER_SET = 150;
+export const MAX_WORKOUT_SECONDS = 86_400;
 
 export function estimateWorkoutKcal(durationSec: number, weightKg: number): number {
   return Math.round(MET_STRENGTH_TRAINING * weightKg * (durationSec / 3600));
@@ -42,7 +46,14 @@ export function buildWorkoutRecord(
   session: ActiveSession,
   opts: BuildRecordOptions,
 ): WorkoutRecord {
-  const durationSec = Math.max(0, Math.round((opts.now - session.startedAt) / 1000));
+  const timed = timerStart(session);
+  // Without a timer, estimate from the sets logged rather than counting idle time as training.
+  const rawDurationSec =
+    timed !== null
+      ? Math.max(0, Math.round((opts.now - timed) / 1000))
+      : completedSetCount(session) * ESTIMATED_SECONDS_PER_SET;
+  // The server accepts at most a day; a timer left running can't make the save fail.
+  const durationSec = Math.min(MAX_WORKOUT_SECONDS, rawDurationSec);
   const exercises = session.exercises
     .map((e) => {
       const done = e.sets.filter((s) => s.status === 'done');
@@ -251,6 +262,8 @@ export function buildSessionFromPlan(
     planId: plan.id,
     title: plan.name,
     startedAt: now,
+    // The timer stays off until the person asks for it.
+    timerStartedAt: null,
     priorVolumeKg: 0,
     priorSetsCompleted: 0,
     completedExerciseCount: 0,

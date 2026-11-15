@@ -6,6 +6,7 @@ import {
   completedSetCount,
   currentExercise,
   formatClock,
+  timerStart,
   formatKg,
   logActiveSet,
   restRemainingSeconds,
@@ -80,6 +81,7 @@ describe('formatting', () => {
   it('formats clocks and weights', () => {
     expect(formatClock(75)).toBe('01:15');
     expect(formatClock(-5)).toBe('00:00');
+    expect(formatClock(3725)).toBe('1:02:05');
     expect(formatKg(32)).toBe('32');
     expect(formatKg(34.5)).toBe('34.5');
   });
@@ -87,5 +89,13 @@ describe('formatting', () => {
   it('computes rest remaining, rounding up and clamping at zero', () => {
     expect(restRemainingSeconds(10_500, 0)).toBe(11);
     expect(restRemainingSeconds(1_000, 5_000)).toBe(0);
+  });
+});
+
+describe('timerStart', () => {
+  it('is null until the timer is started, and falls back to the start for older sessions', () => {
+    expect(timerStart({ startedAt: 100, timerStartedAt: null })).toBeNull();
+    expect(timerStart({ startedAt: 100, timerStartedAt: 250 })).toBe(250);
+    expect(timerStart({ startedAt: 100 })).toBe(100);
   });
 });

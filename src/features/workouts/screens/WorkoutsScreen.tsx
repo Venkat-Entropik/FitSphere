@@ -19,6 +19,7 @@ import { RestTimerCard } from '../components/RestTimerCard';
 import { SessionTelemetryCard } from '../components/SessionTelemetryCard';
 import { TodaySuggestionCard } from '../components/TodaySuggestionCard';
 import { WorkoutActionDock } from '../components/WorkoutActionDock';
+import { StaleSessionCard } from '../components/StaleSessionCard';
 import { WorkoutCategoryChips } from '../components/WorkoutCategoryChips';
 import { useStartWorkout } from '../hooks/useStartWorkout';
 import {
@@ -40,6 +41,8 @@ import {
   nextExercise,
   restRemainingSeconds,
   sessionVolumeKg,
+  STALE_SESSION_MS,
+  timerStart,
   totalSetCount,
 } from '../utils/workout.logic';
 
@@ -55,7 +58,7 @@ export function WorkoutsScreen() {
   const [today] = useState(() => Date.now());
   const startWorkout = useStartWorkout();
   const finishWorkout = useFinishWorkout();
-  const { session, rest, adjustWeight, adjustReps, logSet, addRest, skipRest } =
+  const { session, rest, adjustWeight, adjustReps, logSet, addRest, skipRest, startTimer, finish } =
     useActiveWorkoutStore();
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
@@ -119,25 +122,39 @@ export function WorkoutsScreen() {
     );
   }
 
+  if (now - session.startedAt > STALE_SESSION_MS) {
+    return (
+      <Screen scroll>
+        <StaleSessionCard
+          title={session.title}
+          startedLabel={new Date(session.startedAt).toLocaleString(undefined, {
+            weekday: 'short',
+            hour: 'numeric',
+            minute: '2-digit',
+          })}
+          setsDone={completedSetCount(session)}
+          onResume={() => startTimer()}
+          onDiscard={finish}
+        />
+      </Screen>
+    );
+  }
+
+  const timerStartedAt = timerStart(session);
+  const timerOn = timerStartedAt !== null;
   const set = activeSet(exercise);
   const upNext = nextExercise(session);
   const restSeconds = rest ? restRemainingSeconds(rest.endsAt, now) : 0;
 
   return (
     <Screen scroll>
-      <WorkoutCategoryChips
-        categories={categories.data ?? []}
-        selectedId={plans.data?.find((p) => p.id === session.planId)?.categoryId ?? 'push'}
-        onSelect={() => undefined}
-      />
       <SessionTelemetryCard
         title={session.title}
-        elapsed={formatClock((now - session.startedAt) / 1000)}
+        elapsed={timerOn ? formatClock((now - (timerStartedAt ?? now)) / 1000) : null}
         volume={formatVolume(sessionVolumeKg(session))}
         setsDone={completedSetCount(session)}
         setsTotal={totalSetCount(session)}
-        heartRateBpm={session.heartRateBpm}
-        onOpenSettings={() => undefined}
+        onStartTimer={() => startTimer()}
       />
       <ExerciseTrackerCard
         exercise={exercise}

@@ -2,48 +2,70 @@ import { View } from 'react-native';
 
 import { Card } from '@/components/cards/Card';
 import { AppText } from '@/components/ui/AppText';
-import { Icon, type IconName } from '@/components/ui/Icon';
-import { glow, useTheme, type ColorToken } from '@/theme';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
+import { glow, useTheme } from '@/theme';
 
-interface StatTileProps {
-  icon: IconName;
-  iconColor?: ColorToken;
+function StatTile({
+  label,
+  value,
+  unit,
+  accent = false,
+}: {
   label: string;
-  children: React.ReactNode;
-}
-
-function StatTile({ icon, iconColor = 'onSurfaceVariant', label, children }: StatTileProps) {
+  value: string;
+  unit?: string;
+  accent?: boolean;
+}) {
   const theme = useTheme();
   return (
     <View
+      accessible
+      accessibilityLabel={`${label}: ${value}${unit ? ` ${unit}` : ''}`}
       style={{
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 10,
-        borderRadius: theme.radius.sm,
+        flexBasis: 0,
+        minWidth: 0,
+        gap: 4,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: theme.radius.md,
         backgroundColor: theme.colors.surface,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-        <Icon name={icon} size={14} color={iconColor} />
-        <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
-          {label}
+      <AppText variant="labelCaps" color="onSurfaceVariant" uppercase numberOfLines={1}>
+        {label}
+      </AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+        {/* Long values (a timer past an hour, big volumes) step down a size instead of overflowing. */}
+        <AppText
+          variant={value.length > 5 ? 'labelUi' : 'headlineMd'}
+          weight={value.length > 5 ? 'bold' : undefined}
+          color={accent ? 'primary' : 'onSurface'}
+          tabular
+          numberOfLines={1}
+          style={{ flexShrink: 1 }}
+        >
+          {value}
         </AppText>
+        {unit ? (
+          <AppText variant="bodySm" color="onSurfaceVariant" numberOfLines={1}>
+            {unit}
+          </AppText>
+        ) : null}
       </View>
-      {children}
     </View>
   );
 }
 
 export interface SessionTelemetryCardProps {
   title: string;
-  elapsed: string;
+  /** null while the timer is off. */
+  elapsed: string | null;
   volume: string;
   setsDone: number;
   setsTotal: number;
-  heartRateBpm: number | null;
-  onOpenSettings: () => void;
+  onStartTimer: () => void;
 }
 
 export function SessionTelemetryCard({
@@ -52,79 +74,53 @@ export function SessionTelemetryCard({
   volume,
   setsDone,
   setsTotal,
-  heartRateBpm,
-  onOpenSettings,
+  onStartTimer,
 }: SessionTelemetryCardProps) {
   const theme = useTheme();
   return (
-    <Card tone="low" style={{ gap: 8, overflow: 'hidden' }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-        }}
-      >
-        <View style={{ flex: 1, gap: 2 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              style={[
-                { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary },
-                glow(theme.colors.primary, 0.8, 5),
-              ]}
-            />
-            <AppText variant="labelCaps" color="primary" uppercase style={{ letterSpacing: 1.6 }}>
-              Active Session
-            </AppText>
-          </View>
-          <AppText variant="headlineMd" accessibilityRole="header">
-            {title}
+    <Card tone="low" style={{ gap: 12 }}>
+      <View style={{ gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View
+            style={[
+              { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary },
+              glow(theme.colors.primary, 0.8, 5),
+            ]}
+          />
+          <AppText variant="labelCaps" color="primary" uppercase style={{ letterSpacing: 1.6 }}>
+            Workout in progress
           </AppText>
         </View>
+        <AppText variant="headlineMd" accessibilityRole="header">
+          {title}
+        </AppText>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <StatTile label="Time" value={elapsed ?? '--:--'} />
+        <StatTile label="Volume" value={volume} unit="kg" />
+        <StatTile label="Sets" value={`${setsDone}/${setsTotal}`} accent />
+      </View>
+      {elapsed === null ? (
         <View
-          accessibilityRole="button"
-          accessibilityLabel="Workout settings"
-          onTouchEnd={onOpenSettings}
           style={{
-            padding: 8,
-            borderRadius: theme.radius.sm,
+            gap: 10,
+            padding: 12,
+            borderRadius: theme.radius.md,
             backgroundColor: theme.colors.surface,
           }}
         >
-          <Icon name="more_horiz" size={20} color="onSurfaceVariant" />
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 8, paddingTop: 8 }}>
-        <StatTile icon="timer" label="Time">
-          <AppText variant="headlineMd" tabular>
-            {elapsed}
-          </AppText>
-        </StatTile>
-        <StatTile icon="fitness_center" label="Volume">
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-            <AppText variant="headlineMd" tabular>
-              {volume}
-            </AppText>
-            <AppText variant="labelCaps" color="onSurfaceVariant">
-              kg
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="timer" size={18} color="primary" />
+            <AppText variant="labelUi" weight="semibold">
+              Time this workout?
             </AppText>
           </View>
-        </StatTile>
-        <StatTile icon="checklist" label="Sets">
-          <AppText variant="headlineMd" color="primary" tabular>
-            {setsDone}
-            <AppText variant="bodySm" color="onSurfaceVariant" weight="regular">
-              /{setsTotal}
-            </AppText>
+          <AppText variant="bodySm" color="onSurfaceVariant">
+            The timer is off. Start it when you are ready, or just log your sets without one.
           </AppText>
-        </StatTile>
-        <StatTile icon="favorite" iconColor="error" label="BPM">
-          <AppText variant="headlineMd" tabular>
-            {heartRateBpm ?? '--'}
-          </AppText>
-        </StatTile>
-      </View>
+          <Button label="Start timer" onPress={onStartTimer} />
+        </View>
+      ) : null}
     </Card>
   );
 }

@@ -111,9 +111,12 @@ function activateFirstSet(s: ActiveSession): ActiveSession {
 
 export const formatClock = (totalSeconds: number): string => {
   const safe = Math.max(0, Math.floor(totalSeconds));
-  const m = Math.floor(safe / 60);
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
   const sec = safe % 60;
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(sec).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
 export const formatKg = (kg: number): string => (Number.isInteger(kg) ? String(kg) : kg.toFixed(1));
@@ -123,3 +126,12 @@ export const formatVolume = (kg: number): string => Math.round(kg).toLocaleStrin
 export function restRemainingSeconds(endsAt: number, now: number): number {
   return Math.max(0, Math.ceil((endsAt - now) / 1000));
 }
+
+/** A session left open this long is almost certainly forgotten, not still in progress. */
+export const STALE_SESSION_MS = 8 * 60 * 60 * 1000;
+
+/** When the workout timer started, or null if it is off. Older saved sessions had no setting and ran from the start. */
+export const timerStart = (
+  session: Pick<ActiveSession, 'startedAt' | 'timerStartedAt'>,
+): number | null =>
+  session.timerStartedAt === undefined ? session.startedAt : session.timerStartedAt;

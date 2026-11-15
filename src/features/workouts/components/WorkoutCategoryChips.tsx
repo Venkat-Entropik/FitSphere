@@ -10,7 +10,7 @@ export interface WorkoutCategoryChipsProps {
   onSelect: (id: string) => void;
 }
 
-/** Horizontally scrolling filter pills; bleeds to the screen edges like the Stitch layout. */
+/** One row that scrolls sideways only, bleeding to the screen edges. */
 export function WorkoutCategoryChips({
   categories,
   selectedId,
@@ -20,24 +20,22 @@ export function WorkoutCategoryChips({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginHorizontal: -20 }}
+      directionalLockEnabled
+      alwaysBounceVertical={false}
+      style={{ marginHorizontal: -20, flexGrow: 0 }}
       contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4, gap: 8 }}
     >
-      {categories.map((category) => {
-        const selected = category.id === selectedId;
-        return (
-          <Chip
-            key={category.id}
-            size="lg"
-            uppercase
-            label={category.label}
-            icon={category.icon}
-            selected={selected}
-            trailingDot={selected}
-            onPress={() => onSelect(category.id)}
-          />
-        );
-      })}
+      {categories.map((category) => (
+        <Chip
+          key={category.id}
+          size="lg"
+          uppercase
+          label={category.label}
+          icon={category.icon}
+          selected={category.id === selectedId}
+          onPress={() => onSelect(category.id)}
+        />
+      ))}
     </ScrollView>
   );
 }

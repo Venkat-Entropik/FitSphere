@@ -29,6 +29,8 @@ interface ActiveWorkoutState {
   logSet: (now?: number) => void;
   addRest: (seconds?: number) => void;
   skipRest: () => void;
+  /** Starts (or restarts) the workout timer, e.g. when resuming a session that was left open. */
+  startTimer: (now?: number) => void;
   finish: () => void;
 }
 
@@ -81,6 +83,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       },
 
       skipRest: () => set({ rest: null }),
+
+      startTimer: (now = Date.now()) => {
+        const { session } = get();
+        if (session) set({ session: { ...session, timerStartedAt: now } });
+      },
 
       finish: () => set({ session: null, rest: null }),
     }),
