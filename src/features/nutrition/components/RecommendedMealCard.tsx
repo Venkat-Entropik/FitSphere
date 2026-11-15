@@ -49,11 +49,8 @@ export function RecommendedMealCard({ meal, onLog, busy = false }: RecommendedMe
             <Icon name={categoryMeta(meal.category).icon} size={20} color="primary" />
           </View>
           <View style={{ flex: 1 }}>
-            <AppText variant="labelCaps" color="primary" uppercase>
-              Recommended {shortLabel}{' '}
-              <AppText variant="labelCaps" color="onSurfaceVariant" weight="regular">
-                • Target: ~{meal.kcal} kcal
-              </AppText>
+            <AppText variant="labelCaps" color="primary" uppercase numberOfLines={1}>
+              Suggested {shortLabel}
             </AppText>
             <AppText variant="headlineMd" weight="semibold" style={{ lineHeight: 24 }}>
               {meal.title}
@@ -82,32 +79,17 @@ export function RecommendedMealCard({ meal, onLog, busy = false }: RecommendedMe
         }}
       >
         <AppText variant="bodySm" color="onSurfaceVariant">
-          Suggested: {meal.protein}g Protein • {meal.carbs}g Carbs • {meal.fat}g Fat
+          ~{meal.kcal} kcal • {meal.protein}g P • {meal.carbs}g C • {meal.fat}g F
         </AppText>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 }}>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={`Log Recommended ${shortLabel}`}
-            onPress={onLog}
-            loading={busy}
-            leftIcon={<Icon name="check_circle" size={18} color="onPrimary" />}
-          />
-        </View>
-        <View
-          accessibilityLabel="Scan barcode (coming soon)"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.surfaceHigh,
-            opacity: 0.6,
-          }}
-        >
-          <Icon name="qr_code_scanner" size={20} color="onSurfaceVariant" />
-        </View>
+      <View style={{ paddingTop: 4 }}>
+        <Button
+          label={`Log ${shortLabel}`}
+          accessibilityLabel={`Log Recommended ${shortLabel}`}
+          onPress={onLog}
+          loading={busy}
+          leftIcon={<Icon name="check_circle" size={18} color="onPrimary" />}
+        />
       </View>
     </Card>
   );

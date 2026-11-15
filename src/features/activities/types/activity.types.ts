@@ -56,6 +56,8 @@ export interface ActivitySnapshot {
 export interface KindOption {
   kind: ActivityKind;
   label: string;
+  /** One short word for compact pickers. */
+  short: string;
   icon: string;
   /** Whether GPS route tracking applies to this kind. */
   usesGps: boolean;

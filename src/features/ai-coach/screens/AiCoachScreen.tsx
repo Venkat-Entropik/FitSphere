@@ -14,10 +14,12 @@ import { AssistantMessage, UserMessage } from '../components/MessageBubbles';
 import { StrainChartCard } from '../components/StrainChartCard';
 import { SuggestedPrompts } from '../components/SuggestedPrompts';
 import { TypingIndicator } from '../components/TypingIndicator';
+import { UsageNote } from '../components/UsageNote';
 import {
   useCoachMessages,
   useCoachOverview,
   useCoachSuggestions,
+  useCoachUsage,
   useSendCoachMessage,
 } from '../hooks/useCoach';
 import { normalizeMessage } from '../utils/text';
@@ -26,6 +28,7 @@ export function AiCoachScreen() {
   const overview = useCoachOverview();
   const suggestions = useCoachSuggestions();
   const messages = useCoachMessages();
+  const usage = useCoachUsage().data;
   const send = useSendCoachMessage();
   const startWorkout = useStartWorkout();
   const [draft, setDraft] = useState('');
@@ -33,7 +36,7 @@ export function AiCoachScreen() {
 
   const submit = (raw: string) => {
     const text = normalizeMessage(raw);
-    if (!text || send.isPending) return;
+    if (!text || send.isPending || usage?.remaining === 0) return;
     setDraft('');
     send.mutate(text);
   };
@@ -70,6 +73,7 @@ export function AiCoachScreen() {
     >
       <CoachStatusCard statusLabel={data.statusLabel} syncLabel={data.syncLabel} />
       <ContextChips chips={data.contextChips} />
+      {usage ? <UsageNote usage={usage} /> : null}
       <AnalysisCard analysis={data.analysis} />
       {(messages.data ?? []).map((message) =>
         message.role === 'user' ? (

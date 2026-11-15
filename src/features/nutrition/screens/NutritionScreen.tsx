@@ -87,14 +87,15 @@ export function NutritionScreen() {
         ) : null}
       </View>
       <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 8 }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 2 }}>
           <SecondaryButton
-            label="Scan Barcode"
+            label="Scan"
+            accessibilityLabel="Scan Barcode"
             onPress={() => setSurface('scan')}
             leftIcon={<Icon name="qr_code_scanner" size={18} color="primary" />}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 3 }}>
           <Button
             label="Add Food"
             onPress={() => setSurface('search')}

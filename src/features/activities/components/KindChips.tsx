@@ -1,4 +1,4 @@
-import { Pressable, ScrollView } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
@@ -13,15 +13,11 @@ export interface KindChipsProps {
   disabled?: boolean;
 }
 
+/** All five activity types in one row of equal tiles, so none is hidden off-screen. */
 export function KindChips({ selected, onSelect, disabled = false }: KindChipsProps) {
   const theme = useTheme();
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ marginHorizontal: -20 }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4, gap: 4 }}
-    >
+    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 8 }}>
       {KIND_OPTIONS.map((option) => {
         const active = option.kind === selected;
         return (
@@ -32,27 +28,32 @@ export function KindChips({ selected, onSelect, disabled = false }: KindChipsPro
             accessibilityLabel={option.label}
             disabled={disabled}
             onPress={() => onSelect(option.kind)}
-            style={[
+            style={({ pressed }) => [
               {
-                flexDirection: 'row',
+                flex: 1,
                 alignItems: 'center',
                 gap: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: theme.radius.pill,
+                paddingVertical: 12,
+                borderRadius: theme.radius.md,
                 backgroundColor: active ? theme.colors.primary : theme.colors.surface,
                 opacity: disabled && !active ? 0.5 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
               },
               active && theme.shadows.softPrimaryGlow,
             ]}
           >
-            <Icon name={option.icon} size={18} color={active ? 'onPrimary' : 'onSurfaceVariant'} />
-            <AppText variant="labelUi" color={active ? 'onPrimary' : 'onSurfaceVariant'}>
-              {option.label}
+            <Icon name={option.icon} size={22} color={active ? 'onPrimary' : 'onSurfaceVariant'} />
+            <AppText
+              variant="labelUi"
+              numberOfLines={1}
+              weight={active ? 'bold' : 'medium'}
+              color={active ? 'onPrimary' : 'onSurfaceVariant'}
+            >
+              {option.short}
             </AppText>
           </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }

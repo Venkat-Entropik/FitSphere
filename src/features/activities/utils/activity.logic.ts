@@ -9,11 +9,11 @@ import type {
 } from '../types/activity.types';
 
 export const KIND_OPTIONS: readonly KindOption[] = [
-  { kind: 'run', label: 'Outdoor Run', icon: 'directions_run', usesGps: true },
-  { kind: 'cycle', label: 'Cycling', icon: 'pedal_bike', usesGps: true },
-  { kind: 'walk', label: 'Trail Walk', icon: 'hiking', usesGps: true },
-  { kind: 'cardio', label: 'Cardio', icon: 'fitness_center', usesGps: false },
-  { kind: 'hiit', label: 'HIIT', icon: 'timer', usesGps: false },
+  { kind: 'run', label: 'Outdoor Run', short: 'Run', icon: 'directions_run', usesGps: true },
+  { kind: 'cycle', label: 'Cycling', short: 'Cycle', icon: 'pedal_bike', usesGps: true },
+  { kind: 'walk', label: 'Trail Walk', short: 'Walk', icon: 'hiking', usesGps: true },
+  { kind: 'cardio', label: 'Cardio', short: 'Cardio', icon: 'fitness_center', usesGps: false },
+  { kind: 'hiit', label: 'HIIT', short: 'HIIT', icon: 'timer', usesGps: false },
 ];
 
 export const kindUsesGps = (kind: ActivityKind): boolean =>

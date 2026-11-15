@@ -67,3 +67,13 @@ export interface SuggestedPrompt {
   tone: ChipTone;
   text: string;
 }
+
+/** The plan and what is left of today's coach messages. The server enforces the limit. */
+export interface CoachUsage {
+  plan: 'free' | 'pro';
+  limit: number;
+  used: number;
+  remaining: number;
+  /** Epoch ms when the allowance resets. */
+  resetsAt: number;
+}

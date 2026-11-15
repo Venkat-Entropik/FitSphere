@@ -64,6 +64,7 @@ export function SegmentedControl<T extends string>({
           >
             <AppText
               variant="labelUi"
+              numberOfLines={1}
               color={selected ? 'onPrimary' : 'onSurfaceVariant'}
               weight={selected ? 'semibold' : 'medium'}
             >

@@ -2,7 +2,12 @@ import { env } from '@/config/env';
 import { apiClient } from '@/services/api/api-client';
 import { API_ENDPOINTS } from '@/services/api/api-endpoints';
 
-import type { CoachMessage, CoachOverview, SuggestedPrompt } from '../types/coach.types';
+import type {
+  CoachMessage,
+  CoachOverview,
+  CoachUsage,
+  SuggestedPrompt,
+} from '../types/coach.types';
 import { buildMockHistory, mockOverview, mockReply, mockSuggestions } from './coach.mock';
 
 /**
@@ -15,6 +20,8 @@ export interface CoachRepository {
   getSuggestions(): Promise<SuggestedPrompt[]>;
   getHistory(): Promise<CoachMessage[]>;
   sendMessage(text: string): Promise<CoachMessage>;
+  /** Null when there is no limit to show (the offline demo). */
+  getUsage(): Promise<CoachUsage | null>;
 }
 
 const MOCK_LATENCY_MS = 900;
@@ -24,6 +31,7 @@ const mockRepository: CoachRepository = {
   getOverview: async () => mockOverview,
   getSuggestions: async () => mockSuggestions,
   getHistory: async () => buildMockHistory(),
+  getUsage: async () => null,
   sendMessage: async (text) => {
     await delay(MOCK_LATENCY_MS);
     return {
@@ -40,6 +48,7 @@ const apiRepository: CoachRepository = {
   getSuggestions: async () =>
     (await apiClient.get<SuggestedPrompt[]>(API_ENDPOINTS.coach.suggestions)).data,
   getHistory: async () => (await apiClient.get<CoachMessage[]>(API_ENDPOINTS.coach.messages)).data,
+  getUsage: async () => (await apiClient.get<CoachUsage>(API_ENDPOINTS.coach.usage)).data,
   sendMessage: async (text) =>
     (await apiClient.post<CoachMessage>(API_ENDPOINTS.coach.send, { text })).data,
 };

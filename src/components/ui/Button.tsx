@@ -16,6 +16,8 @@ export type ButtonSize = 'md' | 'lg';
 
 export interface ButtonProps {
   label: string;
+  /** Screen-reader name when it should say more than the (short) visible label. */
+  accessibilityLabel?: string;
   onPress: () => void;
   variant?: ButtonVariant;
   /** md = 48px (default), lg = 56px (hero CTA). */
@@ -32,6 +34,7 @@ export interface ButtonProps {
 
 export function Button({
   label,
+  accessibilityLabel,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -58,7 +61,7 @@ export function Button({
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={onPress}
@@ -88,6 +91,7 @@ export function Button({
             <AppText
               variant={size === 'lg' ? 'headlineMd' : 'bodyLg'}
               weight={size === 'lg' ? 'bold' : 'semibold'}
+              numberOfLines={1}
               style={{
                 color: foreground,
                 flexShrink: 1,
@@ -107,6 +111,6 @@ export function Button({
 const styles = StyleSheet.create({
   base: { flexDirection: 'row', alignItems: 'center' },
   fullWidth: { alignSelf: 'stretch' },
-  content: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1 },
+  content: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   contentGrow: { flex: 1, paddingRight: 8 },
 });

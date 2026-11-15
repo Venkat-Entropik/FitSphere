@@ -90,21 +90,21 @@ export function WorkoutPlanCard({ plan, onLoad, onModify }: WorkoutPlanCardProps
         </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Button
-          label="Load into Workout"
-          onPress={onLoad}
-          fullWidth={false}
-          style={{ height: 36, paddingHorizontal: 12 }}
-          leftIcon={<Icon name="play_arrow" size={16} color="onPrimary" />}
-        />
-        <Button
-          variant="secondary"
-          label="Modify"
-          onPress={onModify}
-          fullWidth={false}
-          style={{ height: 36, paddingHorizontal: 10 }}
-          leftIcon={<Icon name="tune" size={16} color="onSurfaceVariant" />}
-        />
+        <View style={{ flex: 3 }}>
+          <Button
+            label="Load Workout"
+            onPress={onLoad}
+            leftIcon={<Icon name="play_arrow" size={18} color="onPrimary" />}
+          />
+        </View>
+        <View style={{ flex: 2 }}>
+          <Button
+            variant="secondary"
+            label="Modify"
+            onPress={onModify}
+            leftIcon={<Icon name="tune" size={18} color="onSurfaceVariant" />}
+          />
+        </View>
       </View>
     </View>
   );

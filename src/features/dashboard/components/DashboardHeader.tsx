@@ -40,20 +40,15 @@ export function DashboardHeader({
           </AppText>
         </View>
         <View
-          accessibilityLabel={`${streakDays}-day streak`}
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
             paddingHorizontal: 10,
             paddingVertical: 4,
             borderRadius: theme.radius.pill,
             backgroundColor: theme.colors.surfaceHigh,
           }}
         >
-          <AppText style={{ fontSize: 12 }}>🔥</AppText>
-          <AppText variant="labelCaps" color="primary">
-            {streakDays}-day streak
+          <AppText variant="labelCaps" color="onSurface" tabular numberOfLines={1}>
+            {weightKg} kg
           </AppText>
         </View>
       </View>
@@ -67,9 +62,6 @@ export function DashboardHeader({
       >
         <AppText variant="headlineLgMobile" accessibilityRole="header" style={{ flexShrink: 1 }}>
           {getGreeting(now)}, {athleteName}
-        </AppText>
-        <AppText variant="labelUi" color="onSurfaceVariant" tabular>
-          {weightKg} kg
         </AppText>
       </View>
     </View>

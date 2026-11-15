@@ -45,7 +45,10 @@ jest.mock('react-native-reanimated', () => {
   const identity = <T>(value: T) => value;
   return {
     __esModule: true,
-    default: { View },
+    default: { View, createAnimatedComponent: identity },
+    FadeInDown: { delay: () => ({ duration: () => ({}) }) },
+    Easing: { out: identity, cubic: identity, inOut: identity, quad: identity },
+    useAnimatedProps: () => ({}),
     useSharedValue: (initial: unknown) => ({ value: initial }),
     useAnimatedStyle: () => ({}),
     withTiming: identity,

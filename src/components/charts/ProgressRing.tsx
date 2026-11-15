@@ -1,6 +1,15 @@
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle, G } from 'react-native-svg';
 
+import { useMotionEnabled } from '@/components/motion/useReducedMotion';
 import { AppText } from '@/components/ui/AppText';
 import { useTheme, type ColorToken } from '@/theme';
 
@@ -25,10 +34,59 @@ export interface ProgressRingProps {
   centerLabel?: string;
   /** Custom center content (e.g. an icon); shown instead of the value text. */
   children?: React.ReactNode;
+  /** Sweep the rings open when they first appear, and glide when the value changes. */
+  animated?: boolean;
   accessibilityLabel?: string;
 }
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const clamp = (n: number) => Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0));
+
+function RingArc({
+  cx,
+  cy,
+  r,
+  stroke,
+  strokeWidth,
+  progress,
+  delay,
+  animate,
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+  stroke: string;
+  strokeWidth: number;
+  progress: number;
+  delay: number;
+  animate: boolean;
+}) {
+  const circumference = 2 * Math.PI * r;
+  const shown = useSharedValue(animate ? 0 : progress);
+  useEffect(() => {
+    shown.value = animate
+      ? withDelay(delay, withTiming(progress, { duration: 1100, easing: Easing.out(Easing.cubic) }))
+      : progress;
+  }, [animate, delay, progress, shown]);
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - shown.value),
+  }));
+  return (
+    <AnimatedCircle
+      cx={cx}
+      cy={cy}
+      r={r}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      fill="none"
+      strokeDasharray={`${circumference} ${circumference}`}
+      strokeDashoffset={circumference * (1 - (animate ? 0 : progress))}
+      animatedProps={animatedProps}
+    />
+  );
+}
 
 export function ProgressRing({
   rings,
@@ -40,9 +98,11 @@ export function ProgressRing({
   centerUnit,
   centerLabel,
   children,
+  animated = false,
   accessibilityLabel,
 }: ProgressRingProps) {
   const theme = useTheme();
+  const motion = useMotionEnabled();
   const mid = size / 2;
   const average = rings.length
     ? rings.reduce((sum, r) => sum + clamp(r.progress), 0) / rings.length
@@ -58,7 +118,6 @@ export function ProgressRing({
       <Svg width={size} height={size} style={styles.rotate}>
         {rings.map((ring, i) => {
           const r = (size - strokeWidth) / 2 - inset - i * (strokeWidth + ringGap);
-          const circumference = 2 * Math.PI * r;
           return (
             <G key={i}>
               <Circle
@@ -70,16 +129,15 @@ export function ProgressRing({
                 strokeWidth={strokeWidth}
                 fill="none"
               />
-              <Circle
+              <RingArc
                 cx={mid}
                 cy={mid}
                 r={r}
                 stroke={theme.colors[ring.color]}
                 strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray={`${circumference} ${circumference}`}
-                strokeDashoffset={circumference * (1 - clamp(ring.progress))}
+                progress={clamp(ring.progress)}
+                delay={200 + i * 180}
+                animate={animated && motion}
               />
             </G>
           );

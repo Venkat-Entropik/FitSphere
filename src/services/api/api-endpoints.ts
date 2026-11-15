@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
     overview: '/coach/overview',
     suggestions: '/coach/suggestions',
     messages: '/coach/messages',
+    usage: '/coach/usage',
     send: '/coach/messages',
   },
   profile: { me: '/profile', preferences: '/profile/preferences', weights: '/profile/weights' },

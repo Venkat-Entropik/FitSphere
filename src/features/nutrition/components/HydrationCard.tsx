@@ -44,8 +44,13 @@ export function HydrationCard({ ml, goalMl, onAdd, busy = false }: HydrationCard
           paddingTop: 4,
         }}
       >
-        <AppText variant="bodySm" color="onSurfaceVariant">
-          Goal: {goalMl.toLocaleString('en-US')} ml
+        <AppText
+          variant="bodySm"
+          color="onSurfaceVariant"
+          numberOfLines={1}
+          style={{ flexShrink: 0 }}
+        >
+          Goal {(goalMl / 1000).toFixed(1)} L
         </AppText>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {WATER_STEPS_ML.map((step) => (
