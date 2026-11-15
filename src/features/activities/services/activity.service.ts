@@ -1,7 +1,5 @@
-import { env } from '@/config/env';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
+import { commitChange } from '@/services/sync';
 
 import type { ActivityRecord } from '../types/activity.types';
 
@@ -10,25 +8,14 @@ export interface ActivityRepository {
   saveActivity(record: ActivityRecord): Promise<ActivityRecord>;
 }
 
-const mockRepository: ActivityRepository = {
+/** On-device history; with the real backend a saved activity also queues for the server (works offline). */
+export const activityService: ActivityRepository = {
   getHistory: async () => {
     await dbReady();
     return useMockDb.getState().activities;
   },
   saveActivity: async (record) => {
-    await dbReady();
-    useMockDb.setState((s) => ({
-      activities: [...s.activities.filter((a) => a.id !== record.id), record],
-    }));
+    await commitChange({ type: 'activity.save', record });
     return record;
   },
 };
-
-const apiRepository: ActivityRepository = {
-  getHistory: async () =>
-    (await apiClient.get<ActivityRecord[]>(API_ENDPOINTS.activities.list)).data,
-  saveActivity: async (record) =>
-    (await apiClient.post<ActivityRecord>(API_ENDPOINTS.activities.list, record)).data,
-};
-
-export const activityService: ActivityRepository = env.useMocks ? mockRepository : apiRepository;

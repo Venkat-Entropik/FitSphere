@@ -15,13 +15,19 @@ export interface MockDbState {
   workouts: WorkoutRecord[];
   activities: ActivityRecord[];
   nutritionDays: Record<string, NutritionDayRecord>;
+  /**
+   * Whose data this is when the app runs against the real backend (the local copy is a replica of the
+   * server). Unset for the offline demo's sample data.
+   */
+  ownerId?: string | null;
   /** Replaces the whole database (used by tests and "reset sample data"). */
   reset: (seed?: Omit<MockDbState, 'reset'>) => void;
 }
 
 /**
- * Stands in for the backend database while no API exists. The mock repositories read and write it
- * exactly like a real service would, and it persists across app restarts. Real repositories ignore it.
+ * The app's on-device database. With the offline demo it is seeded with sample data and stands in for
+ * the backend. With the real backend it is a local copy of the signed-in user's server data: every screen
+ * reads and writes it, so the app works offline, and `src/services/sync` keeps it in step with the server.
  */
 export const useMockDb = create<MockDbState>()(
   persist(

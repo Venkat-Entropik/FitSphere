@@ -88,6 +88,16 @@ On a physical phone `localhost` is the phone itself: run the API with `HOST=0.0.
   no `DATABASE_URL`, the backend runs an embedded Postgres (PGlite) that keeps its files in `backend/data/pglite`,
   so local development needs nothing installed. Tests use the same embedded Postgres in memory.
 
+## Offline use and sync
+
+With the real backend, the phone keeps its own copy of your data (`src/services/mock-db`) and every screen reads and
+writes that copy, so the app is instant and works with no connection. Each change is also queued
+(`src/services/sync`) and sent to the server in the background: workouts, runs, meals, water, weigh-ins and profile
+edits. Changes carry client-generated ids and the server ignores repeats, so retries are safe. The queue is saved on
+the phone, survives restarts, and belongs to the account that made it. The header pill shows the state (Synced,
+Syncing, Offline, Waiting, Needs attention) and opens a sheet with details and "Sync now". Sign-in, the AI coach and
+password reset still need a connection.
+
 ## Business logic (Phase 3)
 
 - **Mock backend.** `src/services/mock-db` is a persisted Zustand store seeded with flagged sample

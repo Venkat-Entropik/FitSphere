@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
+import { DEMO_USER_ID } from '../demo';
 import { startSession } from '../services/session';
 
-export const DEMO_USER_ID = 'demo';
+export { DEMO_USER_ID };
 
 /** Offline demo account (mock mode only): no server involved, sample data on this device. */
 export function useDemoSession() {

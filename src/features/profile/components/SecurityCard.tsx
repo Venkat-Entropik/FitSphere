@@ -56,11 +56,11 @@ export function SecurityCard({ units, reminder, onExport, onOpenSettings }: Secu
       />
       <SettingRow
         icon="lock"
-        title={env.useMocks ? 'On-Device Storage' : 'Account Storage'}
+        title={env.useMocks ? 'On-Device Storage' : 'Account & Offline Storage'}
         subtitle={
           env.useMocks
             ? 'Your data is stored on this device only'
-            : 'Your data is saved to your FitSphere account'
+            : 'Saved to your account and kept on this phone for offline use'
         }
       />
       <SettingRow

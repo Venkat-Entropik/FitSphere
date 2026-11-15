@@ -284,6 +284,17 @@ const MIGRATIONS: { id: number; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 5,
+    sql: `
+      -- Lets a retried "add water" (for example after going offline) count only once.
+      CREATE TABLE nutrition_water_events (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        id      TEXT NOT NULL,
+        PRIMARY KEY (user_id, id)
+      );
+    `,
+  },
 ];
 
 const MIGRATION_LOCK = 727_274;

@@ -12,7 +12,12 @@ export const API_ENDPOINTS = {
   },
   workouts: { list: '/workouts', history: '/workouts/history' },
   activities: { list: '/activities' },
-  nutrition: { daily: '/nutrition/daily', logFood: '/nutrition/foods', water: '/nutrition/water' },
+  nutrition: {
+    daily: '/nutrition/daily',
+    range: '/nutrition/range',
+    logFood: '/nutrition/foods',
+    water: '/nutrition/water',
+  },
   coach: {
     overview: '/coach/overview',
     suggestions: '/coach/suggestions',

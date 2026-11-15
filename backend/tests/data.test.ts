@@ -108,6 +108,7 @@ describe('authentication', () => {
       ['GET', '/activities'],
       ['POST', '/activities'],
       ['GET', '/nutrition/daily?date=2026-11-01'],
+      ['GET', '/nutrition/range?from=2026-11-01&to=2026-11-01'],
       ['POST', '/nutrition/foods'],
       ['DELETE', '/nutrition/foods/m1?date=2026-11-01'],
       ['POST', '/nutrition/water'],
@@ -292,6 +293,52 @@ describe('nutrition', () => {
   });
 });
 
+describe('nutrition: offline replays and catch-up', () => {
+  it('counts a repeated water event once, so a retried request is safe', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    const add = (ml: number, id?: string) => call(h, a.token, 'POST', '/nutrition/water', { date: '2026-11-01', ml, ...(id && { id }) });
+    assert.equal((await add(250, 'evt-1')).json().hydrationMl, 250);
+    assert.equal((await add(250, 'evt-1')).json().hydrationMl, 250, 'same event id: applied once');
+    assert.equal((await add(250, 'evt-2')).json().hydrationMl, 500);
+    assert.equal((await add(100)).json().hydrationMl, 600, 'no id keeps the old behaviour');
+    assert.equal((await add(100)).json().hydrationMl, 700);
+    // Another user may reuse the same event id.
+    const b = await signUp(h, 'b@example.com');
+    const other = await call(h, b.token, 'POST', '/nutrition/water', { date: '2026-11-01', ml: 300, id: 'evt-1' });
+    assert.equal(other.json().hydrationMl, 300);
+  });
+
+  it('returns every day with food or water in a date range, oldest first', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    const b = await signUp(h, 'b@example.com');
+    await call(h, a.token, 'POST', '/nutrition/foods', body.meal({ id: 'm1', date: '2026-10-30', loggedAt: NOW - 2 * 86_400_000 }));
+    await call(h, a.token, 'POST', '/nutrition/foods', body.meal({ id: 'm2', date: '2026-11-01', loggedAt: NOW }));
+    await call(h, a.token, 'POST', '/nutrition/water', { date: '2026-10-31', ml: 500 });
+    await call(h, a.token, 'POST', '/nutrition/foods', body.meal({ id: 'old', date: '2026-08-01', loggedAt: 1 }));
+    await call(h, b.token, 'POST', '/nutrition/foods', body.meal({ id: 'b1', date: '2026-11-01', loggedAt: NOW }));
+
+    const res = await call(h, a.token, 'GET', '/nutrition/range?from=2026-10-30&to=2026-11-01');
+    assert.equal(res.statusCode, 200);
+    const days = res.json();
+    assert.deepEqual(days.map((d: { dateKey: string }) => d.dateKey), ['2026-10-30', '2026-10-31', '2026-11-01']);
+    assert.equal(days[0].meals[0].id, 'm1');
+    assert.deepEqual([days[1].meals.length, days[1].hydrationMl], [0, 500]);
+    assert.equal(days[2].meals.length, 1, "B's meal is not included");
+  });
+
+  it('validates the range', async () => {
+    const h = await setup();
+    const a = await signUp(h, 'a@example.com');
+    const get = (q: string) => call(h, a.token, 'GET', `/nutrition/range${q}`);
+    assert.equal((await get('')).statusCode, 400);
+    assert.equal((await get('?from=2026-11-02&to=2026-11-01')).statusCode, 400);
+    assert.equal((await get('?from=2026-01-01&to=2026-11-01')).statusCode, 400);
+    assert.equal((await get('?from=2026-10-01&to=2026-11-01')).statusCode, 200);
+  });
+});
+
 describe('per-user isolation', () => {
   it("user A can never read or modify user B's data", async () => {
     const h = await setup();
@@ -353,7 +400,7 @@ describe('migrations', () => {
 
     const second = await openDatabase({ path }); // runs the migration check again
     assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM users'))!.n, 1);
-    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 4);
+    assert.equal((await second.get<{ n: number }>('SELECT COUNT(*) AS n FROM schema_migrations'))!.n, 5);
     // Timestamps are far beyond 32 bits and come back as plain numbers.
     assert.equal((await second.get<{ created_at: number }>('SELECT created_at FROM users'))!.created_at, 1_793_542_000_000);
     await second.close();

@@ -5,7 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { fail, validationFailure } from '../http.js';
 import type { DataDeps } from './profile.routes.js';
 import type { NutritionRepository } from './nutrition.repository.js';
-import { dateQuery, foodBody, idParams, MAX_MEALS_PER_DAY, waterBody } from './schemas.js';
+import { dateQuery, foodBody, idParams, MAX_MEALS_PER_DAY, rangeQuery, waterBody } from './schemas.js';
 
 export function registerNutritionRoutes(app: FastifyInstance, nutrition: NutritionRepository, { now }: DataDeps): void {
   const auth = { preHandler: app.authenticate };
@@ -14,6 +14,12 @@ export function registerNutritionRoutes(app: FastifyInstance, nutrition: Nutriti
     const query = dateQuery.safeParse(request.query);
     if (!query.success) return validationFailure(reply, query.error);
     return nutrition.getDay(request.userId!, query.data.date);
+  });
+
+  app.get('/nutrition/range', auth, async (request, reply) => {
+    const query = rangeQuery.safeParse(request.query);
+    if (!query.success) return validationFailure(reply, query.error);
+    return nutrition.getRange(request.userId!, query.data.from, query.data.to);
   });
 
   app.post('/nutrition/foods', auth, async (request, reply) => {
@@ -42,6 +48,6 @@ export function registerNutritionRoutes(app: FastifyInstance, nutrition: Nutriti
   app.post('/nutrition/water', auth, async (request, reply) => {
     const parsed = waterBody.safeParse(request.body);
     if (!parsed.success) return validationFailure(reply, parsed.error);
-    return nutrition.addWater(request.userId!, parsed.data.date, parsed.data.ml);
+    return nutrition.addWater(request.userId!, parsed.data.date, parsed.data.ml, parsed.data.id);
   });
 }

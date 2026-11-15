@@ -1,7 +1,5 @@
-import { env } from '@/config/env';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
+import { commitChange } from '@/services/sync';
 import { dateKey } from '@/utils/date';
 
 import type {
@@ -10,7 +8,7 @@ import type {
   UserProfile,
   WeightEntry,
 } from '../types/profile.types';
-import { applyProfilePatch, upsertWeight } from '../utils/profile.logic';
+import { applyProfilePatch } from '../utils/profile.logic';
 
 export interface NewWeightInput {
   kg: number;
@@ -34,33 +32,36 @@ export interface ProfileRepository {
   logWeight(input: NewWeightInput, now?: number): Promise<WeightEntry[]>;
 }
 
-async function applyAndStore(patch: ProfilePatch): Promise<UserProfile> {
+/** Checks a change against the current profile before it is recorded, so bad values never get queued. */
+async function validated(patch: ProfilePatch, now: number): Promise<void> {
   await dbReady();
-  const db = useMockDb.getState();
-  const result = applyProfilePatch(db.profile, patch, Date.now());
+  const result = applyProfilePatch(useMockDb.getState().profile, patch, now);
   if (!result.ok) throw new ProfileValidationError(result.errors);
-  // A changed body weight is a weigh-in: keep the weight log consistent with the profile.
-  const changedWeight =
-    patch.weightKg !== undefined && patch.weightKg !== db.profile.profile.weightKg;
-  const weights = changedWeight
-    ? upsertWeight(db.weights, {
-        id: `weight-${Date.now()}`,
-        dateKey: dateKey(Date.now()),
-        kg: patch.weightKg!,
-      })
-    : db.weights;
-  useMockDb.setState({ profile: result.profile, weights });
-  return result.profile;
 }
 
-const mockRepository: ProfileRepository = {
+/**
+ * Reads and writes the on-device database. With the real backend, writes also queue for the server
+ * (see `src/services/sync`), so profile edits work offline.
+ */
+export const profileService: ProfileRepository = {
   getProfile: async () => {
     await dbReady();
     return useMockDb.getState().profile;
   },
 
-  saveProfile: (body) => applyAndStore(body),
-  updateProfile: (patch) => applyAndStore(patch),
+  saveProfile: async (profile) => {
+    const now = Date.now();
+    await validated(profile, now);
+    await commitChange({ type: 'profile.save', profile, now });
+    return useMockDb.getState().profile;
+  },
+
+  updateProfile: async (patch) => {
+    const now = Date.now();
+    await validated(patch, now);
+    await commitChange({ type: 'profile.patch', patch, now });
+    return useMockDb.getState().profile;
+  },
 
   getWeights: async () => {
     await dbReady();
@@ -68,34 +69,10 @@ const mockRepository: ProfileRepository = {
   },
 
   logWeight: async (input, now = Date.now()) => {
-    await dbReady();
-    const db = useMockDb.getState();
     // Current mass follows the newest logged weight; reject impossible values before logging them.
-    const result = applyProfilePatch(db.profile, { weightKg: input.kg }, now);
-    if (!result.ok) throw new ProfileValidationError(result.errors);
+    await validated({ weightKg: input.kg }, now);
     const entry: WeightEntry = { id: `weight-${now}`, dateKey: dateKey(now), ...input };
-    const weights = upsertWeight(db.weights, entry);
-    useMockDb.setState({ weights, profile: result.profile });
-    return weights;
+    await commitChange({ type: 'weight.log', entry, now });
+    return useMockDb.getState().weights;
   },
 };
-
-const apiRepository: ProfileRepository = {
-  getProfile: async () => (await apiClient.get<UserProfile>(API_ENDPOINTS.profile.me)).data,
-  saveProfile: async (profile) =>
-    (await apiClient.put<UserProfile>(API_ENDPOINTS.profile.me, profile)).data,
-  updateProfile: async (patch) =>
-    (await apiClient.patch<UserProfile>(API_ENDPOINTS.profile.me, patch)).data,
-  getWeights: async () => (await apiClient.get<WeightEntry[]>(API_ENDPOINTS.profile.weights)).data,
-  // The id and day come from the client so a retried request replaces the entry instead of duplicating it.
-  logWeight: async (input, now = Date.now()) =>
-    (
-      await apiClient.post<WeightEntry[]>(API_ENDPOINTS.profile.weights, {
-        id: `weight-${now}`,
-        dateKey: dateKey(now),
-        ...input,
-      })
-    ).data,
-};
-
-export const profileService: ProfileRepository = env.useMocks ? mockRepository : apiRepository;

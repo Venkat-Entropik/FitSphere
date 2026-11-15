@@ -1,7 +1,5 @@
-import { env } from '@/config/env';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
+import { commitChange } from '@/services/sync';
 
 import type { ActiveSessionTemplate, WorkoutCategory } from '../types/workout.types';
 import type { Exercise, WorkoutPlan, WorkoutRecord } from '../types/workout-record.types';
@@ -18,7 +16,12 @@ export interface WorkoutRepository {
   saveWorkout(record: WorkoutRecord): Promise<WorkoutRecord>;
 }
 
-const mockRepository: WorkoutRepository = {
+/**
+ * Exercises, plans and categories are reference data bundled with the app. History lives in the
+ * on-device database; with the real backend a saved workout also queues for the server, so finishing a
+ * workout works offline.
+ */
+export const workoutService: WorkoutRepository = {
   getCategories: async () => mockWorkoutCategories,
   getActiveSession: async () => buildMockSession(),
   getExercises: async () => EXERCISE_CATALOG,
@@ -28,27 +31,7 @@ const mockRepository: WorkoutRepository = {
     return useMockDb.getState().workouts;
   },
   saveWorkout: async (record) => {
-    await dbReady();
-    useMockDb.setState((s) => ({
-      workouts: [...s.workouts.filter((w) => w.id !== record.id), record],
-    }));
+    await commitChange({ type: 'workout.save', record });
     return record;
   },
 };
-
-/**
- * Only the user's own history lives on the server. Exercises, plans and categories are reference data
- * bundled with the app: the pure aggregators (dashboard, analytics, progress) need the plans synchronously.
- */
-const apiRepository: WorkoutRepository = {
-  getCategories: mockRepository.getCategories,
-  getActiveSession: mockRepository.getActiveSession,
-  getExercises: mockRepository.getExercises,
-  getPlans: mockRepository.getPlans,
-  getHistory: async () =>
-    (await apiClient.get<WorkoutRecord[]>(API_ENDPOINTS.workouts.history)).data,
-  saveWorkout: async (record) =>
-    (await apiClient.post<WorkoutRecord>(API_ENDPOINTS.workouts.list, record)).data,
-};
-
-export const workoutService: WorkoutRepository = env.useMocks ? mockRepository : apiRepository;

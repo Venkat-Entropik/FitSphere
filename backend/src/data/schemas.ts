@@ -140,10 +140,24 @@ export const foodBody = z
   .strict();
 
 export const waterBody = z
-  .object({ date: dateKey, ml: z.number().int().min(-5000).max(5000), goalMl: z.number().int().min(0).max(20_000).optional() })
+  .object({
+    date: dateKey,
+    ml: z.number().int().min(-5000).max(5000),
+    goalMl: z.number().int().min(0).max(20_000).optional(),
+    /** Client-generated; a repeated id is applied once, so retries after going offline are safe. */
+    id: id.optional(),
+  })
   .strict();
 
 export const dateQuery = z.object({ date: dateKey });
+export const MAX_RANGE_DAYS = 62;
+export const rangeQuery = z
+  .object({ from: dateKey, to: dateKey })
+  .refine((r) => r.from <= r.to, { message: '`from` must not be after `to`', path: ['from'] })
+  .refine((r) => (Date.parse(`${r.to}T00:00:00Z`) - Date.parse(`${r.from}T00:00:00Z`)) / 86_400_000 < MAX_RANGE_DAYS, {
+    message: `Ask for at most ${MAX_RANGE_DAYS} days at a time`,
+    path: ['to'],
+  });
 export const idParams = z.object({ id });
 export const MAX_MEALS_PER_DAY = 50;
 export const MAX_WATER_ML = 10_000;

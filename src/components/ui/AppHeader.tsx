@@ -1,6 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SyncStatusPill } from '@/features/sync/components/SyncStatusPill';
+import { env } from '@/config/env';
 import { glow, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
@@ -34,7 +36,9 @@ export function AppHeader({ live = true }: AppHeaderProps) {
         FitSphere
       </AppText>
       <View style={styles.right}>
-        {live ? (
+        {/* With the real backend the pill reports sync; the offline demo keeps the LIVE badge. */}
+        {!env.useMocks ? <SyncStatusPill /> : null}
+        {live && env.useMocks ? (
           <View style={[styles.live, { backgroundColor: theme.colors.surface }]}>
             <View
               style={[

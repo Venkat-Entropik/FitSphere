@@ -1,14 +1,28 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { DEMO_USER_ID } from '@/features/authentication/hooks/useDemoSession';
+import { env } from '@/config/env';
+import { DEMO_USER_ID } from '@/features/authentication/demo';
 import { authService } from '@/features/authentication/services/auth.service';
 import { setUnauthorizedHandler } from '@/services/api/api-client';
 import { createQueryClient } from '@/services/api/query-client';
+import { startSync, stopSync } from '@/services/sync';
 import { useAuthStore } from '@/store/auth.store';
+
+/** Keeps this phone's data in step with the account while signed in: sends queued changes, catches up. */
+function SyncManager() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => (s.status === 'signedIn' ? (s.user?.id ?? null) : null));
+  useEffect(() => {
+    if (env.useMocks || !userId || userId === DEMO_USER_ID) return;
+    startSync(queryClient);
+    return stopSync;
+  }, [queryClient, userId]);
+  return null;
+}
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
@@ -35,7 +49,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          <SyncManager />
+          {children}
+        </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

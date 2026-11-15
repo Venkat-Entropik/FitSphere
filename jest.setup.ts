@@ -22,6 +22,15 @@ jest.mock('expo-secure-store', () => {
 // The YouTube player wraps a native WebView, which has no native module under Jest.
 jest.mock('react-native-webview', () => ({ WebView: 'WebView' }));
 
+// Network state comes from a native module; tests start online and change it through the sync status store.
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => jest.fn()),
+    fetch: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+  },
+}));
+
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
   notificationAsync: jest.fn(),

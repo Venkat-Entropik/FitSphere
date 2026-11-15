@@ -61,14 +61,47 @@ export function createNutritionRepository(db: Db) {
       return day(db, userId, dateKey);
     },
 
-    /** Adds (or, if negative, removes) water, clamped to 0..MAX_WATER_ML. One statement, so concurrent taps don't lose updates. */
-    async addWater(userId: string, dateKey: string, ml: number): Promise<NutritionDayDto> {
-      await db.run(
-        `INSERT INTO nutrition_water (user_id, date_key, ml) VALUES (?, ?, LEAST(?, GREATEST(0, ?)))
-         ON CONFLICT (user_id, date_key) DO UPDATE SET ml = LEAST(?, GREATEST(0, nutrition_water.ml + ?))`,
-        [userId, dateKey, MAX_WATER_ML, ml, MAX_WATER_ML, ml],
+    /**
+     * Adds (or, if negative, removes) water, clamped to 0..MAX_WATER_ML. With an `eventId`, a repeat of the
+     * same event changes nothing, so a request retried after a dropped connection is not counted twice.
+     */
+    async addWater(userId: string, dateKey: string, ml: number, eventId?: string): Promise<NutritionDayDto> {
+      return db.transaction(async (tx) => {
+        if (eventId) {
+          const fresh = await tx.run(
+            'INSERT INTO nutrition_water_events (user_id, id) VALUES (?, ?) ON CONFLICT (user_id, id) DO NOTHING',
+            [userId, eventId],
+          );
+          if (fresh === 0) return day(tx, userId, dateKey);
+        }
+        await tx.run(
+          `INSERT INTO nutrition_water (user_id, date_key, ml) VALUES (?, ?, LEAST(?, GREATEST(0, ?)))
+           ON CONFLICT (user_id, date_key) DO UPDATE SET ml = LEAST(?, GREATEST(0, nutrition_water.ml + ?))`,
+          [userId, dateKey, MAX_WATER_ML, ml, MAX_WATER_ML, ml],
+        );
+        return day(tx, userId, dateKey);
+      });
+    },
+
+    /** Every day in [from, to] that has food or water logged, oldest first. Used to catch a device up in one request. */
+    async getRange(userId: string, from: string, to: string): Promise<NutritionDayDto[]> {
+      const foods = await db.all<{ date_key: string; data: string }>(
+        'SELECT date_key, data FROM nutrition_foods WHERE user_id = ? AND date_key >= ? AND date_key <= ? ORDER BY date_key ASC, logged_at ASC, id ASC',
+        [userId, from, to],
       );
-      return day(db, userId, dateKey);
+      const water = await db.all<{ date_key: string; ml: number }>(
+        'SELECT date_key, ml FROM nutrition_water WHERE user_id = ? AND date_key >= ? AND date_key <= ?',
+        [userId, from, to],
+      );
+      const days = new Map<string, NutritionDayDto>();
+      const ensure = (dateKey: string) => {
+        let d = days.get(dateKey);
+        if (!d) days.set(dateKey, (d = { dateKey, meals: [], hydrationMl: 0 }));
+        return d;
+      };
+      for (const f of foods) ensure(f.date_key).meals.push(JSON.parse(f.data) as MealDto);
+      for (const w of water) ensure(w.date_key).hydrationMl = w.ml;
+      return [...days.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
     },
   };
 }

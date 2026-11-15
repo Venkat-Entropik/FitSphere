@@ -1,6 +1,4 @@
-import { env } from '@/config/env';
 import { WORKOUT_PLANS } from '@/features/workouts/services/catalog.mock';
-import { loadRawRecords } from '@/services/api/raw-records';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
 
 import type { DashboardSummary } from '../types/dashboard.types';
@@ -10,8 +8,8 @@ export interface DashboardRepository {
   getSummary(): Promise<DashboardSummary>;
 }
 
-/** Aggregates the mock database the way a real backend would from its tables. */
-const mockRepository: DashboardRepository = {
+/** Computes the screen from the on-device database, so it works offline and loads instantly. */
+const localRepository: DashboardRepository = {
   getSummary: async () => {
     await dbReady();
     const db = useMockDb.getState();
@@ -25,11 +23,4 @@ const mockRepository: DashboardRepository = {
   },
 };
 
-const apiRepository: DashboardRepository = {
-  getSummary: async () => {
-    const { profile, workouts, activities, plans } = await loadRawRecords();
-    return buildDashboard({ now: Date.now(), profile, workouts, activities, plans });
-  },
-};
-
-export const dashboardService: DashboardRepository = env.useMocks ? mockRepository : apiRepository;
+export const dashboardService: DashboardRepository = localRepository;

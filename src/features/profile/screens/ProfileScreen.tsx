@@ -33,6 +33,7 @@ import { useReminderSetting } from '../hooks/useReminderSetting';
 import { useResetDemoData } from '../hooks/useResetDemoData';
 import { DeleteAccountSheet } from '@/features/authentication/components/DeleteAccountSheet';
 import { DEMO_USER_ID } from '@/features/authentication/hooks/useDemoSession';
+import { useSyncStatus } from '@/features/sync/useSyncStatus';
 import { useAuthStore } from '@/store/auth.store';
 import { sampleMembership, sampleSensors } from '../services/sample-account.mock';
 import { ProfileValidationError } from '../services/profile.service';
@@ -59,6 +60,8 @@ export function ProfileScreen() {
   const logout = useLogout();
   const resetDemo = useResetDemoData();
   const user = useAuthStore((s) => s.user);
+  const sync = useSyncStatus();
+  const unsynced = sync.pending.length + sync.failed.length;
   const exportTelemetry = useExportTelemetry();
   const autoOverload = usePreferencesStore((s) => s.autoProgressiveOverload);
   const setAutoOverload = usePreferencesStore((s) => s.setAutoProgressiveOverload);
@@ -194,7 +197,11 @@ export function ProfileScreen() {
       <ConfirmationModal
         visible={confirm === 'logout'}
         title="Sign out?"
-        message="You'll be signed out on this device and reminders will be turned off."
+        message={
+          unsynced > 0
+            ? `You have ${unsynced} ${unsynced === 1 ? 'change' : 'changes'} that haven't synced yet. They stay on this phone and sync the next time you sign in. You'll be signed out here and reminders will be turned off.`
+            : "You'll be signed out on this device and reminders will be turned off."
+        }
         confirmLabel="Sign out"
         destructive
         onCancel={() => setConfirm(null)}

@@ -1,3 +1,4 @@
+import { dateKey } from '@/utils/date';
 import { buildSeed, DEFAULT_DRAFT } from '@/services/mock-db/seed';
 import {
   profileService,
@@ -133,11 +134,15 @@ describe('profileService (mock database)', () => {
   });
 
   it('logging a weight updates the log and current mass', async () => {
-    const weights = await profileService.logWeight({ kg: 69.1 }, new Date(2026, 10, 4).getTime());
+    // Two days ahead, so it is always the newest entry whatever the real date is.
+    const day = new Date(Date.now() + 2 * 86_400_000);
+    day.setHours(9, 0, 0, 0);
+    const key = dateKey(day);
+    const weights = await profileService.logWeight({ kg: 69.1 }, day.getTime());
     expect(latestWeight(weights)?.kg).toBe(69.1);
     expect(useMockDb.getState().profile.profile.weightKg).toBe(69.1);
-    const again = await profileService.logWeight({ kg: 69.0 }, new Date(2026, 10, 4, 20).getTime());
-    expect(again.filter((w) => w.dateKey === '2026-11-04')).toHaveLength(1);
+    const again = await profileService.logWeight({ kg: 69.0 }, day.getTime() + 11 * 3_600_000);
+    expect(again.filter((w) => w.dateKey === key)).toHaveLength(1);
   });
 });
 

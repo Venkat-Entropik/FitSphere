@@ -1,11 +1,9 @@
-import { env } from '@/config/env';
-import { apiClient } from '@/services/api/api-client';
-import { API_ENDPOINTS } from '@/services/api/api-endpoints';
 import { dbReady, useMockDb } from '@/services/mock-db/mock-db';
+import { commitChange } from '@/services/sync';
 
-import type { NewMealInput } from '../types/nutrition.types';
+import type { Meal, NewMealInput } from '../types/nutrition.types';
 import type { NutritionDayRecord } from '../types/nutrition-record.types';
-import { addMealToRecord, addWaterToRecord, emptyDay, removeMeal } from '../utils/nutrition.logic';
+import { emptyDay } from '../utils/nutrition.logic';
 
 /**
  * Stores raw days of food and water. Targets, totals and recommendations are derived on the client
@@ -18,53 +16,32 @@ export interface NutritionRepository {
   addWater(dateKey: string, ml: number, goalMl: number): Promise<NutritionDayRecord>;
 }
 
-async function update(
-  dateKey: string,
-  change: (day: NutritionDayRecord) => NutritionDayRecord,
-): Promise<NutritionDayRecord> {
-  await dbReady();
-  const days = useMockDb.getState().nutritionDays;
-  const next = change(days[dateKey] ?? emptyDay(dateKey));
-  useMockDb.setState({ nutritionDays: { ...days, [dateKey]: next } });
-  return next;
-}
+const dayOf = (dateKey: string): NutritionDayRecord =>
+  useMockDb.getState().nutritionDays[dateKey] ?? emptyDay(dateKey);
 
-const mockRepository: NutritionRepository = {
+/** An id that stays the same if the request is retried, so the server never counts it twice. */
+const eventId = () => `water-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Reads and writes the on-device database. With the real backend, writes also queue for the server,
+ * so logging meals and water works offline.
+ */
+export const nutritionService: NutritionRepository = {
   getDay: async (dateKey) => {
     await dbReady();
-    return useMockDb.getState().nutritionDays[dateKey] ?? emptyDay(dateKey);
+    return dayOf(dateKey);
   },
-  logMeal: (dateKey, input, now = Date.now()) =>
-    update(dateKey, (day) => addMealToRecord(day, { id: `meal-${now}`, loggedAt: now, ...input })),
-  removeMeal: (dateKey, mealId) => update(dateKey, (day) => removeMeal(day, mealId)),
-  addWater: (dateKey, ml, goalMl) => update(dateKey, (day) => addWaterToRecord(day, ml, goalMl)),
+  logMeal: async (dateKey, input, now = Date.now()) => {
+    const meal: Meal = { id: `meal-${now}`, loggedAt: now, ...input };
+    await commitChange({ type: 'meal.log', dateKey, meal });
+    return dayOf(dateKey);
+  },
+  removeMeal: async (dateKey, mealId) => {
+    await commitChange({ type: 'meal.remove', dateKey, mealId });
+    return dayOf(dateKey);
+  },
+  addWater: async (dateKey, ml, goalMl) => {
+    await commitChange({ type: 'water.add', dateKey, ml, goalMl, eventId: eventId() });
+    return dayOf(dateKey);
+  },
 };
-
-const apiRepository: NutritionRepository = {
-  getDay: async (dateKey) =>
-    (
-      await apiClient.get<NutritionDayRecord>(API_ENDPOINTS.nutrition.daily, {
-        params: { date: dateKey },
-      })
-    ).data,
-  logMeal: async (dateKey, input, now = Date.now()) =>
-    (
-      await apiClient.post<NutritionDayRecord>(API_ENDPOINTS.nutrition.logFood, {
-        date: dateKey,
-        id: `meal-${now}`,
-        loggedAt: now,
-        ...input,
-      })
-    ).data,
-  removeMeal: async (dateKey, mealId) =>
-    (
-      await apiClient.delete<NutritionDayRecord>(`${API_ENDPOINTS.nutrition.logFood}/${mealId}`, {
-        params: { date: dateKey },
-      })
-    ).data,
-  addWater: async (dateKey, ml) =>
-    (await apiClient.post<NutritionDayRecord>(API_ENDPOINTS.nutrition.water, { date: dateKey, ml }))
-      .data,
-};
-
-export const nutritionService: NutritionRepository = env.useMocks ? mockRepository : apiRepository;
