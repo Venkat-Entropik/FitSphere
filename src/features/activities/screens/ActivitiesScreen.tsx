@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -28,6 +29,7 @@ import { sampleActivity } from '../services/activity.mock';
 import { formatDuration, formatPace, KIND_OPTIONS } from '../utils/activity.logic';
 
 const RECENT_COUNT = 4;
+const ALL_COUNT = 50;
 
 function StatTile({
   icon,
@@ -75,7 +77,9 @@ export function ActivitiesScreen() {
   const hydrated = useHydrated(useActivityRecordingStore);
   const recorder = useActivityRecorder();
   const stats = useActivityStats();
+  const router = useRouter();
   const [showSample, setShowSample] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const recording = recorder.status !== 'idle';
 
   if (!hydrated) {
@@ -122,7 +126,8 @@ export function ActivitiesScreen() {
   const shortLabel = chosen?.short ?? 'Activity';
   const blocked =
     recorder.usesGps && recorder.availability !== 'ready' && recorder.availability !== 'checking';
-  const recent = (stats.data ?? []).slice(0, RECENT_COUNT);
+  const all = stats.data ?? [];
+  const recent = all.slice(0, showAll ? ALL_COUNT : RECENT_COUNT);
 
   return (
     <Screen scroll>
@@ -189,7 +194,17 @@ export function ActivitiesScreen() {
       </Reveal>
       <Reveal index={5}>
         <View style={{ gap: 8 }}>
-          <SectionHeader title="Recent activity" />
+          <SectionHeader
+            title={showAll ? 'All activities' : 'Recent activity'}
+            actionLabel={
+              all.length > RECENT_COUNT
+                ? showAll
+                  ? 'Show less'
+                  : `See all (${all.length})`
+                : undefined
+            }
+            onActionPress={() => setShowAll((v) => !v)}
+          />
           {recent.length > 0 ? (
             recent.map((record) => (
               <ActivityCard
@@ -198,6 +213,9 @@ export function ActivitiesScreen() {
                 title={record.title}
                 summary={`${record.distanceKm.toFixed(2)} km · ${formatDuration(record.durationSec)}`}
                 isDemo={record.source === 'sample'}
+                onPress={() =>
+                  router.push({ pathname: '/activity-detail', params: { id: record.id } })
+                }
               />
             ))
           ) : (

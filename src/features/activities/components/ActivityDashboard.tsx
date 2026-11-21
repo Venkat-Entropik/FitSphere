@@ -9,19 +9,31 @@ import type { ActivitySnapshot } from '../types/activity.types';
 import { kindUsesGps, pacerCue } from '../utils/activity.logic';
 
 /** Presentational layout shared by live recording and the sample preview. */
-export function ActivityDashboard({ snapshot }: { snapshot: ActivitySnapshot }) {
+export function ActivityDashboard({
+  snapshot,
+  finished = false,
+}: {
+  snapshot: ActivitySnapshot;
+  /** A saved activity: no live pacer cue, and the map says so when no route was recorded. */
+  finished?: boolean;
+}) {
   const usesGps = kindUsesGps(snapshot.kind);
-  const cue = pacerCue(snapshot);
+  const cue = finished ? null : pacerCue(snapshot);
   return (
     <View style={{ gap: 16 }}>
       {usesGps ? (
-        <RouteMapCard title={snapshot.title} route={snapshot.route} quality={snapshot.gpsQuality} />
+        <RouteMapCard
+          title={snapshot.title}
+          route={snapshot.route}
+          quality={snapshot.gpsQuality}
+          emptyLabel={finished ? 'No GPS route was recorded for this activity.' : undefined}
+        />
       ) : null}
       <View style={{ gap: 8 }}>
         {usesGps ? (
           <DistanceHeroCard distanceKm={snapshot.distanceKm} cadenceSpm={snapshot.cadenceSpm} />
         ) : null}
-        <TelemetryGrid snapshot={snapshot} />
+        <TelemetryGrid snapshot={snapshot} finished={finished} />
       </View>
       {cue ? (
         <PacerCard

@@ -47,12 +47,13 @@ export function ProfileTopBar({ onShare, onEdit }: ProfileTopBarProps) {
         alignItems: 'center',
         justifyContent: 'space-between',
         marginTop: 8,
+        gap: 8,
       }}
     >
-      <AppText variant="headlineLgMobile" accessibilityRole="header">
-        Profile &amp; Settings
+      <AppText variant="headlineLgMobile" accessibilityRole="header" style={{ flexShrink: 1 }}>
+        Profile
       </AppText>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: 8, marginLeft: 12 }}>
         <RoundButton icon="ios_share" label="Export telemetry" onPress={onShare} />
         <RoundButton icon="tune" label="Edit profile" onPress={onEdit} />
       </View>

@@ -17,6 +17,7 @@ import {
   DEFAULT_REST_SECONDS,
   KG_STEP,
   logActiveSet,
+  reopenSet,
   REST_EXTENSION_SECONDS,
 } from '@/features/workouts/utils/workout.logic';
 
@@ -26,6 +27,8 @@ interface ActiveWorkoutState {
   start: (template: ActiveSessionTemplate, now?: number) => void;
   adjustWeight: (direction: 1 | -1) => void;
   adjustReps: (direction: 1 | -1) => void;
+  /** Reopens a logged set of the current exercise to correct what was done. */
+  editSet: (setNumber: number) => void;
   logSet: (now?: number) => void;
   addRest: (seconds?: number) => void;
   skipRest: () => void;
@@ -58,6 +61,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       adjustReps: (direction) => {
         const { session } = get();
         if (session) set({ session: adjustActiveSet(session, { reps: direction }) });
+      },
+
+      editSet: (setNumber) => {
+        const { session } = get();
+        if (session) set({ session: reopenSet(session, setNumber), rest: null });
       },
 
       logSet: (now = Date.now()) => {

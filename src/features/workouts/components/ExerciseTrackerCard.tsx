@@ -95,6 +95,8 @@ export interface ExerciseTrackerCardProps {
   onAdjustReps: (direction: 1 | -1) => void;
   /** Opens the how-to video for this exercise. */
   onShowVideo?: () => void;
+  /** Reopens a logged set so what was done can be corrected. */
+  onEditSet?: (setNumber: number) => void;
 }
 
 export function ExerciseTrackerCard({
@@ -105,6 +107,7 @@ export function ExerciseTrackerCard({
   onAdjustWeight,
   onAdjustReps,
   onShowVideo,
+  onEditSet,
 }: ExerciseTrackerCardProps) {
   const theme = useTheme();
   const canAdjust = activeSetNumber !== null;
@@ -195,23 +198,34 @@ export function ExerciseTrackerCard({
         ) : null}
       </View>
 
-      <SetLogTable sets={exercise.sets} />
+      <SetLogTable sets={exercise.sets} onEditSet={onEditSet} />
+      {exercise.sets.some((x) => x.status === 'done') && onEditSet ? (
+        <AppText variant="bodySm" color="onSurfaceVariant">
+          Tap a finished set to correct its weight or reps.
+        </AppText>
+      ) : null}
 
       {canAdjust && activeSet ? (
         <View style={{ gap: 8 }}>
-          <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
-            Adjust set {activeSetNumber}
-          </AppText>
+          <View style={{ gap: 2 }}>
+            <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
+              Set {activeSetNumber}: what did you do?
+            </AppText>
+            <AppText variant="bodySm" color="onSurfaceVariant">
+              Match these to your actual weight and reps, then tap Log Set. You can fix it later
+              too.
+            </AppText>
+          </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <AdjustRow
-              name="Weight"
+              name="Weight used"
               value={formatKg(activeSet.kg)}
               unit="kg"
               onMinus={() => onAdjustWeight(-1)}
               onPlus={() => onAdjustWeight(1)}
             />
             <AdjustRow
-              name="Reps"
+              name="Reps done"
               value={String(activeSet.reps)}
               unit="reps"
               onMinus={() => onAdjustReps(-1)}

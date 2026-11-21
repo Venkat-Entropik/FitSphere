@@ -63,6 +63,8 @@ const config: ExpoConfig = {
     'expo-notifications',
   ],
   experiments: { typedRoutes: true },
+  // Links this app to its EAS project (not a secret; it ships in the app's public config).
+  extra: { eas: { projectId: '9518525c-6640-419e-8afa-8f4adc70d324' } },
 };
 
 export default config;

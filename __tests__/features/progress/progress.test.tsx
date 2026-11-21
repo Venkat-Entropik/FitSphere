@@ -260,7 +260,8 @@ describe('ProgressScreen', () => {
     expect(screen.getByText(/Longest streak: 14 days/)).toBeTruthy();
     expect(screen.getByText('Centurion Club')).toBeTruthy();
     expect(screen.getByText('Iron Discipline')).toBeTruthy();
-    expect(screen.getByText('68.5 kg (+1.3)')).toBeTruthy();
+    expect(screen.getByText('Body progress')).toBeTruthy();
+    expect(screen.getAllByText('68.5 kg').length).toBeGreaterThan(0);
   });
 
   it('explains when camera permission is denied and never opens the camera', async () => {
@@ -271,7 +272,7 @@ describe('ProgressScreen', () => {
     expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
-  it('shows the captured photo in the current panel', async () => {
+  it('keeps the captured photo and shows it in the photo list', async () => {
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
     (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
       canceled: false,

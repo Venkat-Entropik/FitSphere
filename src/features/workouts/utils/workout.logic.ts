@@ -84,6 +84,7 @@ export function logActiveSet(s: ActiveSession): ActiveSession {
   const updated = replaceCurrentExercise(s, {
     ...exercise,
     personalBestKg: isPersonalRecord ? set.kg : exercise.personalBestKg,
+    startBestKg: exercise.startBestKg ?? exercise.personalBestKg,
     sets,
   });
 
@@ -93,6 +94,32 @@ export function logActiveSet(s: ActiveSession): ActiveSession {
     return activateFirstSet({ ...updated, currentExerciseIndex: s.currentExerciseIndex + 1 });
   }
   return updated;
+}
+
+/**
+ * Reopens a logged set of the current exercise so its weight and reps can be corrected, then logged
+ * again. The set being worked on goes back to "upcoming"; PR flags are recalculated when it is re-logged.
+ */
+export function reopenSet(s: ActiveSession, setNumber: number): ActiveSession {
+  const exercise = currentExercise(s);
+  const target = exercise?.sets.find((x) => x.number === setNumber);
+  if (!exercise || !target || target.status !== 'done') return s;
+
+  const sets = exercise.sets.map((x) => {
+    if (x.number === setNumber) return { ...x, status: 'active' as const, isPersonalRecord: false };
+    if (x.status === 'active') return { ...x, status: 'upcoming' as const };
+    return x;
+  });
+  // Put the exercise's best weight back to what it was before this set, or the best of the others.
+  const bestOfOthers = Math.max(
+    exercise.startBestKg ?? exercise.personalBestKg,
+    ...sets.filter((x) => x.status === 'done').map((x) => x.kg),
+  );
+  return replaceCurrentExercise(s, {
+    ...exercise,
+    personalBestKg: target.isPersonalRecord ? bestOfOthers : exercise.personalBestKg,
+    sets,
+  });
 }
 
 function activateFirstSet(s: ActiveSession): ActiveSession {

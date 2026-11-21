@@ -34,26 +34,28 @@ export function DistanceHeroCard({ distanceKm, cadenceSpm }: DistanceHeroCardPro
           </AppText>
         </View>
       </View>
-      <View
-        style={{
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          borderRadius: theme.radius.sm,
-          backgroundColor: theme.colors.surfaceHigh,
-        }}
-      >
-        <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
-          Cadence
-        </AppText>
-        <AppText variant="headlineMd" color="secondary" tabular>
-          {cadenceSpm ?? '--'}{' '}
-          <AppText variant="labelCaps" color="onSurfaceVariant">
-            spm
+      {cadenceSpm !== null ? (
+        <View
+          style={{
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: theme.radius.sm,
+            backgroundColor: theme.colors.surfaceHigh,
+          }}
+        >
+          <AppText variant="labelCaps" color="onSurfaceVariant" uppercase>
+            Cadence
           </AppText>
-        </AppText>
-      </View>
+          <AppText variant="headlineMd" color="secondary" tabular>
+            {cadenceSpm ?? '--'}{' '}
+            <AppText variant="labelCaps" color="onSurfaceVariant">
+              spm
+            </AppText>
+          </AppText>
+        </View>
+      ) : null}
     </Card>
   );
 }

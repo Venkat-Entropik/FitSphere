@@ -68,7 +68,15 @@ export function SynthesisBanner({ synthesis }: { synthesis: ProgressOverview['sy
               .{' '}
             </>
           )}
-          {synthesis.weeksToMilestone === null ? (
+          {synthesis.weeksToMilestone === 0 ? (
+            <>
+              You are at your target weight of{' '}
+              <AppText variant="bodyMd" color="secondary" weight="semibold">
+                {synthesis.milestoneKg.toFixed(1)} kg
+              </AppText>
+              .
+            </>
+          ) : synthesis.weeksToMilestone === null ? (
             <>
               Keep logging your weight to estimate when you&apos;ll reach{' '}
               <AppText variant="bodyMd" color="secondary" weight="semibold">

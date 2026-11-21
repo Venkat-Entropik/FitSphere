@@ -32,6 +32,7 @@ export function AppText({
   const spec = theme.typography[variant];
   return (
     <Text
+      maxFontSizeMultiplier={1.15}
       {...rest}
       style={[
         {

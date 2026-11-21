@@ -15,24 +15,77 @@ function Cell({ children }: { children: React.ReactNode }) {
   return <View style={{ flex: 1 }}>{children}</View>;
 }
 
-export function TelemetryGrid({ snapshot: s }: { snapshot: ActivitySnapshot }) {
+export function TelemetryGrid({
+  snapshot: s,
+  finished = false,
+}: {
+  snapshot: ActivitySnapshot;
+  /** A saved activity: live-only tiles (current pace, a heart rate that was never measured) are left out. */
+  finished?: boolean;
+}) {
   const theme = useTheme();
   const paceInTarget =
     s.currentPaceSecPerKm !== null &&
     s.targetPaceSecPerKm !== null &&
     s.currentPaceSecPerKm <= s.targetPaceSecPerKm;
 
+  const duration = (
+    <MetricCard
+      label="Duration"
+      icon="schedule"
+      value={formatDuration(s.durationSec)}
+      caption={`Moving time ${formatDuration(s.movingSec)}`}
+    />
+  );
+  const avgPace = (
+    <MetricCard
+      label="Avg Pace"
+      icon="av_timer"
+      value={formatPace(s.avgPaceSecPerKm)}
+      unit="/km"
+      caption={s.targetPaceSecPerKm ? `Target ${formatPace(s.targetPaceSecPerKm)}` : undefined}
+    />
+  );
+  const burned = (
+    <MetricCard
+      label="Burned"
+      icon="local_fire_department"
+      accent="secondary"
+      value={String(s.kcal)}
+      unit="kcal"
+      caption={s.isDemo ? 'Active burn' : 'Estimated'}
+    />
+  );
+  const elevation = (
+    <MetricCard
+      label="Elev Gain"
+      icon="landscape"
+      accent="secondary"
+      value={`+${s.elevationGainM}`}
+      unit="m"
+      caption={s.maxGradePct !== null ? `Max grade ${s.maxGradePct}%` : undefined}
+    />
+  );
+
+  if (finished) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Row>
+          <Cell>{duration}</Cell>
+          <Cell>{avgPace}</Cell>
+        </Row>
+        <Row>
+          <Cell>{burned}</Cell>
+          <Cell>{elevation}</Cell>
+        </Row>
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 8 }}>
       <Row>
-        <Cell>
-          <MetricCard
-            label="Duration"
-            icon="schedule"
-            value={formatDuration(s.durationSec)}
-            caption={`Moving time ${formatDuration(s.movingSec)}`}
-          />
-        </Cell>
+        <Cell>{duration}</Cell>
         <Cell>
           <MetricCard
             label="Current Pace"
@@ -56,27 +109,8 @@ export function TelemetryGrid({ snapshot: s }: { snapshot: ActivitySnapshot }) {
         </Cell>
       </Row>
       <Row>
-        <Cell>
-          <MetricCard
-            label="Avg Pace"
-            icon="av_timer"
-            value={formatPace(s.avgPaceSecPerKm)}
-            unit="/km"
-            caption={
-              s.targetPaceSecPerKm ? `Target ${formatPace(s.targetPaceSecPerKm)}` : undefined
-            }
-          />
-        </Cell>
-        <Cell>
-          <MetricCard
-            label="Burned"
-            icon="local_fire_department"
-            accent="secondary"
-            value={String(s.kcal)}
-            unit="kcal"
-            caption={s.isDemo ? 'Active burn' : 'Estimated'}
-          />
-        </Cell>
+        <Cell>{avgPace}</Cell>
+        <Cell>{burned}</Cell>
       </Row>
       <Row>
         <Cell>
@@ -105,16 +139,7 @@ export function TelemetryGrid({ snapshot: s }: { snapshot: ActivitySnapshot }) {
             }
           />
         </Cell>
-        <Cell>
-          <MetricCard
-            label="Elev Gain"
-            icon="landscape"
-            accent="secondary"
-            value={`+${s.elevationGainM}`}
-            unit="m"
-            caption={s.maxGradePct !== null ? `Max grade ${s.maxGradePct}%` : undefined}
-          />
-        </Cell>
+        <Cell>{elevation}</Cell>
       </Row>
     </View>
   );

@@ -15,10 +15,12 @@ export interface IdentityCardProps {
 
 function Stat({
   value,
+  unit,
   label,
   color = 'onSurface',
 }: {
   value: string;
+  unit?: string;
   label: string;
   color?: ColorToken;
 }) {
@@ -27,17 +29,33 @@ function Stat({
     <View
       style={{
         flex: 1,
+        flexBasis: 0,
+        minWidth: 0,
         alignItems: 'center',
         gap: 2,
         paddingVertical: 12,
+        paddingHorizontal: 2,
         borderRadius: theme.radius.sm,
         backgroundColor: theme.colors.surfaceLow,
       }}
     >
-      <AppText variant="headlineMd" color={color} tabular>
-        {value}
-      </AppText>
-      <AppText variant="labelCaps" color="onSurfaceVariant" uppercase style={{ fontSize: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+        <AppText variant="headlineMd" color={color} tabular numberOfLines={1}>
+          {value}
+        </AppText>
+        {unit ? (
+          <AppText variant="bodySm" color="onSurfaceVariant" numberOfLines={1}>
+            {unit}
+          </AppText>
+        ) : null}
+      </View>
+      <AppText
+        variant="labelCaps"
+        color="onSurfaceVariant"
+        uppercase
+        numberOfLines={1}
+        style={{ fontSize: 10 }}
+      >
         {label}
       </AppText>
     </View>
@@ -110,14 +128,14 @@ export function IdentityCard({
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Stat value={String(massKg)} label="Kg mass" />
-        <Stat value={String(heightCm)} label="Cm height" />
+        <Stat value={String(massKg)} unit="kg" label="Weight" />
+        <Stat value={String(heightCm)} unit="cm" label="Height" />
         <Stat
           value={bodyFatPercent === null ? '--' : `${bodyFatPercent}%`}
-          label="Body fat"
+          label="Fat %"
           color="secondary"
         />
-        <Stat value={`🔥${streak}`} label="Streak" color="primary" />
+        <Stat value={String(streak)} unit="days" label="Streak" color="primary" />
       </View>
     </Card>
   );

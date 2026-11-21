@@ -42,19 +42,10 @@ function Tile({
         justifyContent: 'space-between',
       }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 4,
-        }}
-      >
-        <AppText variant="labelCaps" color="onSurfaceVariant" uppercase style={{ flexShrink: 1 }}>
-          {label}
-        </AppText>
-        {trailing}
-      </View>
+      <AppText variant="labelCaps" color="onSurfaceVariant" uppercase numberOfLines={1}>
+        {label}
+      </AppText>
+      {trailing}
       {children}
     </View>
   );
@@ -82,7 +73,7 @@ export function BaselineCard({
 }: BaselineCardProps) {
   return (
     <SettingsSection
-      title="Biometric Baseline & Targets"
+      title="Your targets"
       icon="monitoring"
       trailing={
         <Pressable
@@ -100,14 +91,14 @@ export function BaselineCard({
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Tile
-            label="Goal trajectory"
+            label="Goal"
             trailing={
               <AppText variant="labelCaps" color="primary" weight="bold">
                 {trajectory.deltaText} kg
               </AppText>
             }
           >
-            <AppText variant="bodyLg" weight="bold">
+            <AppText variant="bodyMd" weight="bold" numberOfLines={2}>
               {trajectory.label}
             </AppText>
             <ProgressBar
@@ -119,19 +110,21 @@ export function BaselineCard({
             <Caption>{trajectory.targetText}</Caption>
           </Tile>
           <Tile
-            label="Daily intake"
+            label="Calories"
             trailing={
-              <AppText variant="labelCaps" color="primary" weight="bold">
+              <AppText variant="labelCaps" color="primary" weight="bold" numberOfLines={1}>
                 {intake.left.toLocaleString('en-US')} left
               </AppText>
             }
           >
-            <AppText variant="headlineMd" tabular>
-              {intake.budgetKcal.toLocaleString('en-US')}{' '}
-              <AppText variant="bodySm" color="onSurfaceVariant" weight="regular">
+            <View>
+              <AppText variant="headlineMd" tabular numberOfLines={1}>
+                {intake.budgetKcal.toLocaleString('en-US')}
+              </AppText>
+              <AppText variant="bodySm" color="onSurfaceVariant">
                 kcal / day
               </AppText>
-            </AppText>
+            </View>
             <ProgressBar
               progress={intake.progress}
               color="secondary"
@@ -142,22 +135,26 @@ export function BaselineCard({
           </Tile>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Tile label="Protein target">
-            <AppText variant="headlineMd" tabular>
-              {proteinG}g{' '}
-              <AppText variant="bodySm" color="onSurfaceVariant" weight="regular">
-                / day
+          <Tile label="Protein">
+            <View>
+              <AppText variant="headlineMd" tabular numberOfLines={1}>
+                {proteinG}g
               </AppText>
-            </AppText>
+              <AppText variant="bodySm" color="onSurfaceVariant">
+                per day
+              </AppText>
+            </View>
             <Caption>{proteinNote}</Caption>
           </Tile>
-          <Tile label="Weekly cadence">
-            <AppText variant="headlineMd" tabular>
-              {cadence.days}{' '}
-              <AppText variant="bodySm" color="onSurfaceVariant" weight="regular">
-                {cadence.days === 1 ? 'Day' : 'Days'} / week
+          <Tile label="Training">
+            <View>
+              <AppText variant="headlineMd" tabular numberOfLines={1}>
+                {cadence.days} {cadence.days === 1 ? 'day' : 'days'}
               </AppText>
-            </AppText>
+              <AppText variant="bodySm" color="onSurfaceVariant">
+                per week
+              </AppText>
+            </View>
             <Caption>{`Split: ${cadence.split}`}</Caption>
           </Tile>
         </View>

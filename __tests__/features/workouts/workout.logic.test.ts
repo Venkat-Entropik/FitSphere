@@ -9,6 +9,7 @@ import {
   timerStart,
   formatKg,
   logActiveSet,
+  reopenSet,
   restRemainingSeconds,
   sessionVolumeKg,
   totalSetCount,
@@ -97,5 +98,50 @@ describe('timerStart', () => {
     expect(timerStart({ startedAt: 100, timerStartedAt: null })).toBeNull();
     expect(timerStart({ startedAt: 100, timerStartedAt: 250 })).toBe(250);
     expect(timerStart({ startedAt: 100 })).toBe(100);
+  });
+});
+
+describe('reopenSet', () => {
+  it('reopens a logged set, parks the active one, and lets the reps be corrected and re-logged', () => {
+    let s = logActiveSet(make()); // set 3 done at its planned reps, set 4 active
+    const planned = currentExercise(s)!.sets[2]!;
+    expect(planned.status).toBe('done');
+
+    s = reopenSet(s, 3);
+    const ex = currentExercise(s)!;
+    expect(ex.sets[2]!.status).toBe('active');
+    expect(ex.sets[3]!.status).toBe('upcoming');
+    expect(activeSet(ex)!.number).toBe(3);
+
+    s = logActiveSet(adjustActiveSet(s, { reps: -2 })); // only managed fewer reps
+    const after = currentExercise(s)!;
+    expect(after.sets[2]).toMatchObject({ status: 'done', reps: planned.reps - 2 });
+    expect(activeSet(after)!.number).toBe(4);
+  });
+
+  it('takes the reopened set out of the volume until it is logged again', () => {
+    const logged = logActiveSet(make());
+    const before = sessionVolumeKg(logged);
+    const reopened = reopenSet(logged, 3);
+    expect(sessionVolumeKg(reopened)).toBeLessThan(before);
+    expect(completedSetCount(reopened)).toBe(completedSetCount(logged) - 1);
+  });
+
+  it('removes a PR flag when the weight is lowered, and keeps it when the weight stays', () => {
+    const pr = logActiveSet(adjustActiveSet(make(), { kg: 2.5 }));
+    expect(currentExercise(pr)!.sets[2]!.isPersonalRecord).toBe(true);
+
+    const lowered = logActiveSet(adjustActiveSet(reopenSet(pr, 3), { kg: -2.5 }));
+    expect(currentExercise(lowered)!.sets[2]!.isPersonalRecord).toBe(false);
+    expect(currentExercise(lowered)!.personalBestKg).toBe(32); // the heaviest of the other logged sets
+
+    const kept = logActiveSet(reopenSet(pr, 3));
+    expect(currentExercise(kept)!.sets[2]!.isPersonalRecord).toBe(true);
+  });
+
+  it('ignores sets that are not logged yet and unknown numbers', () => {
+    const s = make();
+    expect(reopenSet(s, 4)).toBe(s);
+    expect(reopenSet(s, 99)).toBe(s);
   });
 });

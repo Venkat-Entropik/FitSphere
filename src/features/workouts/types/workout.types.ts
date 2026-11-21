@@ -24,6 +24,8 @@ export interface SessionExercise {
   lastWeek: LastPerformance | null;
   /** Heaviest completed weight so far; a heavier logged set is a new PR. */
   personalBestKg: number;
+  /** The best weight before this session raised it, so editing a PR set can restore it. */
+  startBestKg?: number;
   sets: WorkoutSet[];
 }
 

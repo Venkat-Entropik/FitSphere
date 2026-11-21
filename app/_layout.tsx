@@ -34,6 +34,7 @@ function RootStack() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="routine-editor" />
+          <Stack.Screen name="activity-detail" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="(auth)" />

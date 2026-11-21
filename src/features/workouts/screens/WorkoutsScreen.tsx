@@ -58,10 +58,21 @@ export function WorkoutsScreen() {
   const [today] = useState(() => Date.now());
   const startWorkout = useStartWorkout();
   const finishWorkout = useFinishWorkout();
-  const { session, rest, adjustWeight, adjustReps, logSet, addRest, skipRest, startTimer, finish } =
-    useActiveWorkoutStore();
+  const {
+    session,
+    rest,
+    adjustWeight,
+    adjustReps,
+    logSet,
+    addRest,
+    skipRest,
+    startTimer,
+    editSet,
+    finish,
+  } = useActiveWorkoutStore();
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Ticks once per second only while a session is on screen; cleared on unmount.
   const now = useNow(session !== null);
@@ -163,6 +174,7 @@ export function WorkoutsScreen() {
         activeSetNumber={set?.number ?? null}
         onAdjustWeight={adjustWeight}
         onAdjustReps={adjustReps}
+        onEditSet={editSet}
         onShowVideo={() =>
           setVideoExercise(catalog.data?.find((e) => e.id === exercise.id) ?? null)
         }
@@ -187,7 +199,27 @@ export function WorkoutsScreen() {
         logLabel={set ? `Log Set ${set.number}` : 'All sets logged'}
         canLog={Boolean(set)}
         onLog={() => logSet()}
-        onFinish={() => setConfirmFinish(true)}
+        onFinish={() =>
+          completedSetCount(session) === 0 ? setConfirmDiscard(true) : setConfirmFinish(true)
+        }
+        onDiscard={() => setConfirmDiscard(true)}
+      />
+      <ConfirmationModal
+        visible={confirmDiscard}
+        title="Discard this workout?"
+        message={
+          completedSetCount(session) === 0
+            ? 'You have not logged any sets, so there is nothing to save. The workout will be removed.'
+            : 'Everything you logged in this workout will be thrown away. This cannot be undone.'
+        }
+        confirmLabel="Discard Workout"
+        cancelLabel="Keep Going"
+        destructive
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          finish();
+        }}
       />
       <ConfirmationModal
         visible={confirmFinish}

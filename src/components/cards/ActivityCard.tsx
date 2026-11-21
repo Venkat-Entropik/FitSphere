@@ -48,6 +48,7 @@ export function ActivityCard({ kind, title, summary, isDemo = false, onPress }: 
           SAMPLE
         </AppText>
       ) : null}
+      {onPress ? <Icon name="chevron_right" size={22} color="onSurfaceVariant" /> : null}
     </Card>
   );
 }

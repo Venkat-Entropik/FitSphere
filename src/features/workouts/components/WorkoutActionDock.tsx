@@ -10,9 +10,16 @@ export interface WorkoutActionDockProps {
   canLog: boolean;
   onLog: () => void;
   onFinish: () => void;
+  onDiscard: () => void;
 }
 
-export function WorkoutActionDock({ logLabel, canLog, onLog, onFinish }: WorkoutActionDockProps) {
+export function WorkoutActionDock({
+  logLabel,
+  canLog,
+  onLog,
+  onFinish,
+  onDiscard,
+}: WorkoutActionDockProps) {
   const theme = useTheme();
   return (
     <View style={{ gap: 10, paddingTop: 8, paddingBottom: 16 }}>
@@ -39,6 +46,22 @@ export function WorkoutActionDock({ logLabel, canLog, onLog, onFinish }: Workout
         <Icon name="stop_circle" size={18} color="error" />
         <AppText variant="labelUi" color="onSurfaceVariant" weight="semibold">
           Finish Workout Session
+        </AppText>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Discard workout"
+        accessibilityHint="Throws this workout away without saving anything"
+        onPress={onDiscard}
+        style={({ pressed }) => ({
+          height: 40,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <AppText variant="labelUi" color="error" weight="semibold">
+          Discard workout
         </AppText>
       </Pressable>
     </View>

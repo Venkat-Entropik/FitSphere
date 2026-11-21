@@ -84,11 +84,11 @@ describe('ProfileScreen', () => {
 
   it('renders every section of the design from stored data', async () => {
     await renderScreen();
-    expect(await screen.findByText('Profile & Settings')).toBeTruthy();
+    expect(await screen.findByText('Profile')).toBeTruthy();
     expect(screen.getByText('Alex Chen')).toBeTruthy();
     expect(screen.queryByText('PRO TIER')).toBeNull();
     expect(screen.getByText('13.8%')).toBeTruthy(); // latest body-fat reading
-    expect(screen.getByText('Biometric Baseline & Targets')).toBeTruthy();
+    expect(screen.getByText('Your targets')).toBeTruthy();
     expect(screen.getByText('Lean Muscle Gain')).toBeTruthy();
     expect(screen.getByText('+3.5 kg')).toBeTruthy();
     expect(screen.getByText(/Split: Push • Pull • Legs/)).toBeTruthy();
@@ -98,7 +98,7 @@ describe('ProfileScreen', () => {
 
   it('shows no fake devices, membership or unfinished controls', async () => {
     await renderScreen();
-    await screen.findByText('Profile & Settings');
+    await screen.findByText('Profile');
     for (const text of [
       'Connected Telemetry',
       'FitSphere Elite AI Member',

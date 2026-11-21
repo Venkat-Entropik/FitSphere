@@ -93,3 +93,28 @@ export function activityBests(records: readonly ActivityRecord[]): ActivityBests
 export function sortRecentFirst(records: readonly ActivityRecord[]): ActivityRecord[] {
   return [...records].sort((a, b) => b.endedAt - a.endedAt);
 }
+
+/** Rebuilds the dashboard view of a finished activity from what was stored, for reopening it later. */
+export function recordToSnapshot(record: ActivityRecord): ActivitySnapshot {
+  return {
+    kind: record.kind,
+    isDemo: record.source === 'sample',
+    title: record.title,
+    distanceKm: record.distanceKm,
+    durationSec: record.durationSec,
+    movingSec: record.movingSec,
+    currentPaceSecPerKm: null,
+    avgPaceSecPerKm: record.avgPaceSecPerKm,
+    targetPaceSecPerKm: null,
+    kcal: record.kcal,
+    elevationGainM: record.elevationGainM,
+    maxGradePct: null,
+    heartRateBpm: null,
+    heartZone: null,
+    cadenceSpm: null,
+    splits: record.splits,
+    route: record.route,
+    gpsQuality: record.route.length >= 2 ? 'high' : 'none',
+    lapCount: 0,
+  };
+}

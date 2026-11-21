@@ -22,6 +22,25 @@ jest.mock('expo-secure-store', () => {
 // The YouTube player wraps a native WebView, which has no native module under Jest.
 jest.mock('react-native-webview', () => ({ WebView: 'WebView' }));
 
+// File storage is a native module; tests only need the calls to succeed.
+jest.mock('expo-file-system', () => {
+  class Directory {
+    constructor(..._parts: unknown[]) {}
+    create() {}
+  }
+  class File {
+    uri: string;
+    constructor(...parts: unknown[]) {
+      this.uri = parts
+        .map((p) => (typeof p === 'string' ? p : ((p as { uri?: string }).uri ?? '')))
+        .join('/');
+    }
+    async copy() {}
+    delete() {}
+  }
+  return { Directory, File, Paths: { document: { uri: 'file:///documents' } } };
+});
+
 // Network state comes from a native module; tests start online and change it through the sync status store.
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,

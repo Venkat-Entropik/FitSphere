@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
@@ -30,7 +30,7 @@ function HeaderCell({
   );
 }
 
-function SetRow({ set }: { set: WorkoutSet }) {
+function SetRow({ set, onEdit }: { set: WorkoutSet; onEdit?: (n: number) => void }) {
   const theme = useTheme();
   const done = set.status === 'done';
   const active = set.status === 'active';
@@ -38,8 +38,17 @@ function SetRow({ set }: { set: WorkoutSet }) {
   const textColor = upcoming ? 'onSurfaceVariant' : 'onSurface';
   const weight = active ? 'bold' : 'semibold';
 
+  const editable = done && onEdit !== undefined;
+  const Root = editable ? Pressable : View;
   return (
-    <View
+    <Root
+      {...(editable
+        ? {
+            accessibilityRole: 'button' as const,
+            accessibilityHint: 'Opens this set so you can correct the weight or reps',
+            onPress: () => onEdit(set.number),
+          }
+        : {})}
       accessibilityLabel={`Set ${set.number}, ${formatKg(set.kg)} kilograms, ${set.reps} reps, ${set.status}${set.isPersonalRecord ? ', personal record' : ''}`}
       style={[
         {
@@ -164,11 +173,18 @@ function SetRow({ set }: { set: WorkoutSet }) {
           </View>
         )}
       </View>
-    </View>
+    </Root>
   );
 }
 
-export function SetLogTable({ sets }: { sets: readonly WorkoutSet[] }) {
+export function SetLogTable({
+  sets,
+  onEditSet,
+}: {
+  sets: readonly WorkoutSet[];
+  /** Tapping a logged set reopens it for correction. */
+  onEditSet?: (setNumber: number) => void;
+}) {
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 4 }}>
@@ -178,7 +194,7 @@ export function SetLogTable({ sets }: { sets: readonly WorkoutSet[] }) {
         <HeaderCell label="Status" flex={COLS.status} align="right" />
       </View>
       {sets.map((set) => (
-        <SetRow key={set.number} set={set} />
+        <SetRow key={set.number} set={set} onEdit={onEditSet} />
       ))}
     </View>
   );
